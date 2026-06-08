@@ -889,11 +889,16 @@ function renderMap() {
       return '#555';
     })
     .attr('stroke', '#0f1117').attr('stroke-width', 0.5)
+    .attr('data-idx', (f, i) => i)
     .style('cursor', 'pointer')
     .on('mousemove', function (event, f) {
-      const i = features.indexOf(f);
+      // Usar el índice anclado en el elemento (mismo que se usó para el fill).
+      // No usar features.indexOf() porque raise() reordena el DOM y puede desincronizar.
+      const i = +this.getAttribute('data-idx');
       const dept = geoMatchMap[i];
-      const r = dept ? regionByName[dept] : null;
+      // Leer del array global REGIONS (actualizado en cada refresh), no del
+      // closure regionByName que queda congelado en la primera carga.
+      const r = dept ? REGIONS.find(x => x.name === dept) : null;
       showMapTooltip(event, dept, r);
       d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1.2).raise();
     })
