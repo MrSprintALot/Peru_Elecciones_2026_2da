@@ -976,16 +976,23 @@ function renderTrackingChart() {
         tooltip: {
           backgroundColor: '#1e2230', titleColor: '#e8eaed', bodyColor: '#9aa0ab',
           borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, padding: 10,
+          // Ignorar por completo las series de proyección (líneas punteadas "→").
+          // Si el tooltip cae sobre un punto de proyección, devolvemos false
+          // para no mostrar un tooltip vacío que se queda "pegado".
           filter: item => !item.dataset.label.includes('→'),
+          // Solo mostrar el tooltip si hay al menos un punto de serie real bajo el cursor.
           callbacks: {
-            title: items => items[0].parsed.x.toFixed(1) + '% actas',
+            title: items => {
+              const real = items.filter(i => !i.dataset.label.includes('→'));
+              return real.length ? real[0].parsed.x.toFixed(1) + '% actas' : '';
+            },
             label: item => ` ${item.dataset.label}: ${item.parsed.y.toFixed(2)}%`,
           }
         },
       },
       scales: {
         x: {
-          type: 'linear', min: 0, max: 105,
+          type: 'linear', min: 0, max: 100,
           grid: { color: 'rgba(255,255,255,.04)' },
           ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, stepSize: 10, callback: v => v + '%' },
           title: { display: true, text: '% actas', color: '#5f6673', font: { size: 10 } },
