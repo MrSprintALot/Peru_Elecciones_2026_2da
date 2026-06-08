@@ -403,11 +403,21 @@
       .masthead { grid-template-columns: 1fr; align-items: start; gap: 16px; }
       .mast-actions { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; }
       .refresh-status { text-align: left; min-width: 0; }
-      .duel-grid { gap: 10px; }
+      /* Apilar los candidatos en una sola columna: Keiko arriba, Sánchez abajo.
+         En desktop van lado a lado (1fr auto 1fr); en móvil no caben y se
+         solapaban, así que forzamos columna única y alineación a la izquierda. */
+      .duel-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        row-gap: 28px;
+      }
       .duel-divider { display: none; }
-      .cand-pct { font-size: clamp(2.6rem, 17vw, 4rem); }
-      .cand-name { font-size: 16px; }
-      .cand-votes { font-size: 11px; }
+      /* El segundo candidato (.cand.right) se alineaba a la derecha; en
+         columna única lo volvemos a la izquierda para que lea parejo. */
+      .cand.right { align-items: flex-start; text-align: left; }
+      .cand-pct { font-size: clamp(3rem, 18vw, 4.6rem); }
+      .cand-name { font-size: 18px; white-space: normal; }
+      .cand-votes { font-size: 12px; }
       .region-grid { grid-template-columns: 1fr; }
     }
 
