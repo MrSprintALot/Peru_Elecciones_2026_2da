@@ -361,6 +361,16 @@
     }
     .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .map-legend i { width: 10px; height: 10px; border-radius: 1px; }
+    .map-toggle { display: inline-flex; gap: 2px; }
+    .map-mode {
+      background: transparent; border: 1px solid var(--line); cursor: pointer;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+      color: var(--tx3); padding: 4px 9px; transition: all .15s;
+    }
+    .map-mode:first-child { border-radius: 3px 0 0 3px; }
+    .map-mode:last-child { border-radius: 0 3px 3px 0; border-left: 0; }
+    .map-mode:hover { color: var(--tx2); }
+    .map-mode.active { color: var(--tx1); background: var(--bg-3); border-color: var(--line-strong); }
 
     /* Chart */
     .chart-container { position: relative; height: clamp(300px, 38vw, 420px); }
@@ -662,8 +672,12 @@
     <div class="panel">
       <div class="kicker">
         <span class="kicker-tick"></span>
-        <span class="kicker-label">Ganador por departamento</span>
+        <span class="kicker-label" id="mapTitle">Ganador por departamento</span>
         <span class="kicker-rule"></span>
+        <span class="map-toggle">
+          <button class="map-mode active" id="modeWinner" onclick="setMapMode('winner')">Ganador</button>
+          <button class="map-mode" id="modeAbsent" onclick="setMapMode('absent')">Ausentismo</button>
+        </span>
       </div>
       <div class="map-container" id="mapContainer">
         <div class="map-loading" id="mapLoader">
@@ -674,10 +688,15 @@
           Cargando mapa...
         </div>
       </div>
-      <div class="map-legend">
+      <div class="map-legend" id="mapLegendWinner">
         <span><i style="background:var(--c-keiko)"></i> Fujimori</span>
         <span><i style="background:var(--c-sanch)"></i> Sánchez</span>
         <span><i style="background:var(--bg-3);box-shadow:inset 0 0 0 1px var(--line)"></i> Sin datos</span>
+      </div>
+      <div class="map-legend" id="mapLegendAbsent" style="display:none">
+        <span><i style="background:#3a4150"></i> Menor ausentismo</span>
+        <span><i style="background:#7d4a8c"></i> Medio</span>
+        <span><i style="background:#c94b8c"></i> Mayor ausentismo</span>
       </div>
     </div>
 
@@ -1118,6 +1137,48 @@ let geoData = null;
 let geoMatchMap = null;
 let svgEl = null;
 
+// Modo del mapa: 'winner' (ganador) o 'absent' (ausentismo)
+let mapMode = 'winner';
+
+// Escala de color para ausentismo: de azul-gris (bajo) a magenta (alto).
+// Ausentismo = 100 - participación.
+function absentColor(ausentismo) {
+  // Rango típico 10%-40%. Normalizamos 10→0, 40→1.
+  const t = Math.max(0, Math.min(1, (ausentismo - 10) / 30));
+  // Interpolar #3a4150 (gris-azul) → #c94b8c (magenta)
+  const c0 = [58, 65, 80], c1 = [201, 75, 140];
+  const r = Math.round(c0[0] + (c1[0]-c0[0])*t);
+  const g = Math.round(c0[1] + (c1[1]-c0[1])*t);
+  const b = Math.round(c0[2] + (c1[2]-c0[2])*t);
+  return `rgb(${r},${g},${b})`;
+}
+
+// Color de un departamento según el modo activo.
+function fillForRegion(r) {
+  if (!r || r.pct === 0) return '#1e2230';
+  if (mapMode === 'absent') {
+    const part = r.participacion || 0;
+    if (part === 0) return '#1e2230';
+    return absentColor(100 - part);
+  }
+  // modo ganador
+  if (r.fuji >= r.sanch) return C_KEIKO + 'cc';
+  if (r.sanch > r.fuji) return C_SANCH + 'cc';
+  return '#555';
+}
+
+// Cambiar modo del mapa y recolorear
+function setMapMode(mode) {
+  mapMode = mode;
+  document.getElementById('modeWinner').classList.toggle('active', mode === 'winner');
+  document.getElementById('modeAbsent').classList.toggle('active', mode === 'absent');
+  document.getElementById('mapTitle').textContent =
+    mode === 'absent' ? 'Ausentismo por departamento' : 'Ganador por departamento';
+  document.getElementById('mapLegendWinner').style.display = mode === 'winner' ? '' : 'none';
+  document.getElementById('mapLegendAbsent').style.display = mode === 'absent' ? '' : 'none';
+  updateMapColors();
+}
+
 // Misma fuente que el dashboard de primera vuelta (CDN público, objeto "per")
 const TOPO_URL = 'https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/per.topo.json';
 
@@ -1185,10 +1246,7 @@ function renderMap() {
     .attr('fill', (f, i) => {
       const dept = geoMatchMap[i];
       const r = dept ? regionByName[dept] : null;
-      if (!r || r.pct === 0) return '#1e2230';
-      if (r.fuji >= r.sanch) return C_KEIKO + 'cc';
-      if (r.sanch > r.fuji) return C_SANCH + 'cc';
-      return '#555';
+      return fillForRegion(r);
     })
     .attr('stroke', '#0f1117').attr('stroke-width', 0.5)
     .attr('data-idx', (f, i) => i)
@@ -1234,6 +1292,22 @@ function showMapTooltip(event, dept, r) {
   if (!r || r.pct === 0) {
     tip.innerHTML = `<strong style="font-family:'DM Sans',sans-serif;font-size:13px">${esc(dept) || '—'}</strong>
       <div style="color:#9aa0ab;margin-top:3px">Sin datos aún</div>`;
+  } else if (mapMode === 'absent') {
+    const part = r.participacion || 0;
+    const aus = 100 - part;
+    tip.innerHTML = `
+      <strong style="font-family:'DM Sans',sans-serif;font-size:13px">${esc(r.name)}</strong>
+      <div style="margin-top:6px;display:flex;justify-content:space-between;gap:14px">
+        <span style="color:#c94b8c">Ausentismo</span>
+        <span style="color:#c94b8c;font-weight:500">${aus.toFixed(1)}%</span>
+      </div>
+      <div style="margin-top:2px;display:flex;justify-content:space-between;gap:14px">
+        <span style="color:#9aa0ab">Participación</span>
+        <span style="color:#e8eaed;font-weight:500">${part.toFixed(1)}%</span>
+      </div>
+      <div style="color:#616875;margin-top:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:5px">
+        Conteo al ${r.pct.toFixed(1)}%
+      </div>`;
   } else {
     const ganaK = r.fuji >= r.sanch;
     tip.innerHTML = `
@@ -1269,18 +1343,11 @@ function hideMapTooltip() {
 
 function updateMapColors() {
   if (!svgEl || !geoData) return;
-  const features = topojson.feature(geoData, geoData.objects.per).features;
-  const regionByName = {};
-  REGIONS.forEach(r => { regionByName[r.name] = r; });
-
   d3.select(svgEl).selectAll('path')
     .attr('fill', (f, i) => {
       const dept = geoMatchMap ? geoMatchMap[i] : null;
-      const r = dept ? regionByName[dept] : null;
-      if (!r || r.pct === 0) return '#1e2230';
-      if (r.fuji >= r.sanch) return C_KEIKO + 'cc';
-      if (r.sanch > r.fuji) return C_SANCH + 'cc';
-      return '#555';
+      const r = dept ? REGIONS.find(x => x.name === dept) : null;
+      return fillForRegion(r);
     });
 }
 
@@ -1442,7 +1509,7 @@ async function refreshFromONPE() {
 
     REGIONS = regions
       .filter(r => r && r.name)
-      .map(r => ({ ...r, pct: +r.pct || 0, fuji: +r.fuji || 0, sanch: +r.sanch || 0 }));
+      .map(r => ({ ...r, pct: +r.pct || 0, fuji: +r.fuji || 0, sanch: +r.sanch || 0, participacion: +r.participacion || 0 }));
 
     // ── Tracking: preferir el histórico persistido en KV ──
     try {
