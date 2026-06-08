@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  PERÚ ELIGE 2026 — Segunda Vuelta                              ║
+  ║  Dashboard electoral en tiempo real                            ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  Autor:   Rafael Vasquez (MrSprintALot)                        ║
+  ║  Versión: v1 — junio 2026                                      ║
+  ║  Fuente:  ONPE (resultadosegundavuelta.onpe.gob.pe)            ║
+  ║  Stack:   HTML/CSS/JS · D3.js · Chart.js · Cloudflare Workers  ║
+  ║  Repo:    github.com/MrSprintALot/Peru_Elecciones_2026_2da     ║
+  ╚══════════════════════════════════════════════════════════════════╝
+  -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perú 2026 — Segunda Vuelta · Dashboard Electoral</title>
+  <meta property="og:title" content="Perú 2026 Segunda Vuelta — Dashboard Electoral en Tiempo Real">
+  <meta property="og:description" content="Seguimiento en vivo del conteo oficial ONPE — Keiko Fujimori vs Roberto Sánchez">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+  <style>
+    /* ══════════════ 1. VARIABLES ══════════════ */
+    :root {
+      --bg: #0f1117; --bg-card: #181b24; --bg-alt: #1e2230;
+      --border: rgba(255,255,255,0.06);
+      --tx1: #e8eaed; --tx2: #9aa0ab; --tx3: #5f6673;
+      /* Keiko: naranja/rojo FP · Sánchez: verde JPP */
+      --c-keiko: #E8943A;  --c-keiko-bg: rgba(232,148,58,0.12);
+      --c-sanch: #2ECDA7;  --c-sanch-bg: rgba(46,205,167,0.12);
+      --radius: 10px;
+    }
+
+    /* ══════════════ 2. RESET ══════════════ */
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg); color: var(--tx1);
+      min-height: 100vh; overflow-x: hidden;
+    }
+
+    /* ══════════════ 3. LAYOUT ══════════════ */
+    .container { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+
+    .hero {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      padding: 18px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+    }
+    .hero-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+    .hero-sub   { font-size: 11px; color: var(--tx3); margin-top: 2px; }
+    .hero-right { display: flex; align-items: center; gap: 10px; }
+
+    /* Refresh button */
+    .refresh-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--bg-alt);
+      color: var(--tx2); font-size: 12px; font-family: inherit; cursor: pointer;
+      transition: all .15s;
+    }
+    .refresh-btn:hover { background: #262a3a; color: var(--tx1); }
+    .refresh-btn.loading { opacity: .6; pointer-events: none; }
+    .refresh-btn svg { transition: transform .3s; }
+    .refresh-btn.loading svg { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .refresh-status { font-size: 11px; color: var(--tx3); min-width: 140px; text-align: right; }
+    .refresh-status.ok    { color: #2ECDA7; }
+    .refresh-status.error { color: #E04848; }
+
+    /* ══════════════ 4. STATUS BAR ══════════════ */
+    .status-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 20px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      font-size: 11px; color: var(--tx2);
+    }
+    .badge strong { color: var(--tx1); }
+    .badge.live { border-color: rgba(46,205,167,.3); }
+    .badge.live::before {
+      content: ''; display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; background: #2ECDA7;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ══════════════ 5. DUEL — Panel principal 2 candidatos ══════════════ */
+    .duel-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 14px;
+    }
+    .duel-header {
+      text-align: center; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1.5px; color: var(--tx3);
+      margin-bottom: 20px;
+    }
+
+    /* Barra de porcentajes estilo "head to head" */
+    .duel-bar-wrap { display: flex; align-items: center; gap: 0; border-radius: 6px; overflow: hidden; height: 28px; }
+    .duel-bar-keiko { background: var(--c-keiko); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; transition: width .8s ease; }
+    .duel-bar-sanch { background: var(--c-sanch); display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; transition: width .8s ease; }
+    .duel-bar-label { font-size: 11px; font-weight: 700; color: rgba(0,0,0,.7); font-family: 'DM Mono', monospace; white-space: nowrap; }
+
+    .duel-candidates {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px;
+      align-items: center; margin-top: 18px;
+    }
+    .cand-block { display: flex; flex-direction: column; }
+    .cand-block.left { align-items: flex-start; }
+    .cand-block.right { align-items: flex-end; }
+
+    .cand-pct {
+      font-size: 42px; font-weight: 700; line-height: 1;
+      font-family: 'DM Mono', monospace; letter-spacing: -2px;
+    }
+    .cand-pct.keiko { color: var(--c-keiko); }
+    .cand-pct.sanch { color: var(--c-sanch); }
+    .cand-name { font-size: 13px; font-weight: 600; margin-top: 4px; }
+    .cand-party { font-size: 10px; color: var(--tx3); margin-top: 1px; }
+    .cand-votes { font-size: 11px; color: var(--tx2); margin-top: 6px; font-family: 'DM Mono', monospace; }
+
+    .duel-vs {
+      font-size: 18px; font-weight: 700; color: var(--tx3);
+      text-align: center;
+    }
+
+    /* Margen (brecha entre candidatos) */
+    .margen-panel {
+      margin-top: 20px; padding: 14px 18px;
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 8px; text-align: center;
+    }
+    .margen-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--tx3); }
+    .margen-valor {
+      font-size: 22px; font-weight: 700; font-family: 'DM Mono', monospace;
+      margin-top: 2px; transition: color .3s;
+    }
+    .margen-sub { font-size: 11px; color: var(--tx2); margin-top: 2px; }
+
+    /* Banner resultado (cuando llega a ~99%) */
+    .resultado-banner {
+      display: none; margin-top: 12px; padding: 12px 16px;
+      border-radius: 8px; text-align: center;
+      font-size: 14px; font-weight: 600;
+    }
+    .resultado-banner.ganador-keiko {
+      display: block; background: rgba(232,148,58,.15);
+      border: 1px solid rgba(232,148,58,.4); color: var(--c-keiko);
+    }
+    .resultado-banner.ganador-sanch {
+      display: block; background: rgba(46,205,167,.15);
+      border: 1px solid rgba(46,205,167,.4); color: var(--c-sanch);
+    }
+
+    /* ══════════════ 6. ACTAS PROGRESS ══════════════ */
+    .actas-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px; margin-bottom: 14px;
+    }
+    .actas-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+    .actas-pct { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--tx1); }
+    .actas-label { font-size: 11px; color: var(--tx3); margin-top: 1px; }
+    .actas-detail { font-size: 11px; color: var(--tx2); text-align: right; }
+
+    .progress-track {
+      margin-top: 12px; height: 8px; border-radius: 4px;
+      background: var(--bg-alt); overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #4A90D9, #2ECDA7);
+      transition: width .8s ease; width: 0%;
+    }
+
+    .actas-mini-grid {
+      display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap;
+    }
+    .actas-mini {
+      font-size: 11px; color: var(--tx3);
+    }
+    .actas-mini strong { color: var(--tx2); }
+
+    /* ══════════════ 7. GRID (mapa + chart) ══════════════ */
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+      .duel-candidates { grid-template-columns: 1fr auto 1fr; gap: 8px; }
+      .cand-pct { font-size: 28px; }
+    }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--tx3); margin-bottom: 12px;
+    }
+
+    /* Mapa */
+    .map-container { width: 100%; aspect-ratio: 1 / 1.3; position: relative; }
+    .map-loading {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; gap: 8px; color: var(--tx3); font-size: 12px;
+    }
+    .map-loading svg { animation: spin 1.5s linear infinite; opacity: .5; }
+
+    /* Region grid */
+    .region-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 12px;
+    }
+    .rg-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px; border-radius: 4px; cursor: pointer;
+      transition: background .1s;
+    }
+    .rg-item:hover { background: var(--bg-alt); }
+    .rg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .rg-name { font-size: 10px; color: var(--tx2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rg-pct  { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--tx3); }
+
+    /* Chart */
+    .chart-container { position: relative; height: 280px; }
+
+    /* ══════════════ 8. SKELETON ══════════════ */
+    .skel {
+      display: inline-block; border-radius: 4px; background: var(--bg-alt);
+      position: relative; overflow: hidden;
+    }
+    .skel::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent);
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+    /* ══════════════ 9. FOOTER ══════════════ */
+    .footer {
+      text-align: center; padding: 20px 0 30px;
+      font-size: 11px; color: var(--tx3); border-top: 1px solid var(--border);
+      margin-top: 10px;
+    }
+    .footer a { color: var(--tx3); text-decoration: none; }
+    .footer a:hover { color: var(--tx2); }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <div class="hero">
+    <div>
+      <div class="hero-title">🗳️ Perú 2026 — Segunda Vuelta</div>
+      <div class="hero-sub">Keiko Fujimori · Roberto Sánchez — Conteo oficial ONPE</div>
+    </div>
+    <div class="hero-right">
+      <div class="refresh-status" id="refreshStatus">Esperando datos...</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshFromONPE()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+          <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+        </svg>
+        Actualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════ STATUS BAR ══════════════ -->
+  <div class="status-bar">
+    <div class="badge live">
+      <span>ONPE en vivo · Actualiza cada <strong>3 min</strong></span>
+    </div>
+    <div class="badge" id="jeeBadge" style="display:none">
+      📋 JEE: <strong id="jeeActas">—</strong> actas · <strong id="jeeVotos">—</strong> votos
+    </div>
+    <div class="badge">
+      Próximo refresh: <strong id="timerCountdown">3:00</strong>
+    </div>
+  </div>
+
+  <!-- ══════════════ ACTAS PROGRESS ══════════════ -->
+  <div class="actas-card">
+    <div class="actas-header">
+      <div>
+        <div class="actas-pct" id="actasPct">—<span style="font-size:18px;color:var(--tx3)">%</span></div>
+        <div class="actas-label">de actas contabilizadas</div>
+      </div>
+      <div class="actas-detail" id="actasDetail">Cargando...</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="actas-mini-grid">
+      <div class="actas-mini">Total actas: <strong id="actasTotal">—</strong></div>
+      <div class="actas-mini">Contabilizadas: <strong id="actasContab">—</strong></div>
+      <div class="actas-mini">JEE: <strong id="actasJee">—</strong></div>
+      <div class="actas-mini">Actualizado: <strong id="actasUpdate">—</strong></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ DUEL PANEL ══════════════ -->
+  <div class="duel-card">
+    <div class="duel-header">Resultado en tiempo real — % sobre votos válidos</div>
+
+    <!-- Barra head-to-head -->
+    <div class="duel-bar-wrap">
+      <div class="duel-bar-keiko" id="barKeiko" style="width:50%">
+        <span class="duel-bar-label" id="barLabelKeiko">—</span>
+      </div>
+      <div class="duel-bar-sanch" id="barSanch" style="width:50%">
+        <span class="duel-bar-label" id="barLabelSanch">—</span>
+      </div>
+    </div>
+
+    <!-- Candidatos -->
+    <div class="duel-candidates">
+      <!-- Keiko -->
+      <div class="cand-block left">
+        <div class="cand-pct keiko" id="pctKeiko">—</div>
+        <div class="cand-name">Keiko Fujimori</div>
+        <div class="cand-party">Fuerza Popular</div>
+        <div class="cand-votes" id="votosKeiko">— votos</div>
+      </div>
+
+      <div class="duel-vs">VS</div>
+
+      <!-- Sánchez -->
+      <div class="cand-block right">
+        <div class="cand-pct sanch" id="pctSanch">—</div>
+        <div class="cand-name">Roberto Sánchez</div>
+        <div class="cand-party">Juntos por el Perú</div>
+        <div class="cand-votes" id="votosSanch">— votos</div>
+      </div>
+    </div>
+
+    <!-- Margen -->
+    <div class="margen-panel">
+      <div class="margen-label">Ventaja / Margen</div>
+      <div class="margen-valor" id="margenValor">—</div>
+      <div class="margen-sub" id="margenSub">Cargando datos...</div>
+    </div>
+
+    <!-- Banner resultado definitivo (aparece cerca del 99%) -->
+    <div class="resultado-banner" id="resultadoBanner"></div>
+  </div>
+
+  <!-- ══════════════ GRID: MAPA + CHART ══════════════ -->
+  <div class="grid">
+
+    <!-- Mapa -->
+    <div class="card">
+      <div class="card-title">Mapa — Ganador por departamento</div>
+      <div class="map-container" id="mapContainer">
+        <div class="map-loading" id="mapLoader">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+            <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+          Cargando mapa...
+        </div>
+      </div>
+      <div class="region-grid" id="regionGrid"></div>
+    </div>
+
+    <!-- Chart evolución -->
+    <div class="card">
+      <div class="card-title">Evolución del conteo + Proyección</div>
+      <div class="chart-container">
+        <canvas id="trackingChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <div class="footer">
+    Dashboard por <a href="https://github.com/MrSprintALot" target="_blank">Rafael Vasquez (MrSprintALot)</a> ·
+    Datos: <a href="https://resultadosegundavuelta.onpe.gob.pe" target="_blank">ONPE oficial</a> ·
+    <a href="https://github.com/MrSprintALot/Peru_Elecciones_2026_2da" target="_blank">Código fuente</a>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIGURACIÓN
+══════════════════════════════════════════════════════════════ */
+
+// ⚠️ CAMBIAR URL cuando el Worker esté desplegado
+const WORKER_URL = 'https://onpe-proxy-sv.perudata2026.workers.dev';
+const REFRESH_INTERVAL_MS = 3 * 60 * 1000; // 3 minutos
+
+// Colores por candidato
+const C_KEIKO = '#E8943A';
+const C_SANCH = '#2ECDA7';
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════════════════════ */
+
+// Tracking histórico de cortes para el gráfico de evolución
+// Cada entrada: { pct, keiko, sanch }  — se actualiza en cada refresh
+let TRACKING = [
+  // Seed inicial con datos de arranque (se actualiza dinámicamente)
+  // Ejemplo: { pct: 1.97, keiko: 54.009, sanch: 45.991 }
+];
+
+// Datos de regiones para el mapa
+let REGIONS = [];
+
+// Estado del avance nacional
+let NATIONAL = {
+  pct: 0, contabilizadas: 0, totalActas: 0,
+  votosValidos: 0, votosEmitidos: 0, enviadasJee: 0,
+  candidates: { fuji: 0, sanch: 0 }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   TIMER DE AUTO-REFRESH
+══════════════════════════════════════════════════════════════ */
+
+let timerInterval = null;
+let timerSeconds = REFRESH_INTERVAL_MS / 1000;
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerSeconds = REFRESH_INTERVAL_MS / 1000;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+    if (timerSeconds <= 0) {
+      refreshFromONPE();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timerCountdown');
+  if (!el) return;
+  const m = Math.floor(timerSeconds / 60);
+  const s = timerSeconds % 60;
+  el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS DE UI
+══════════════════════════════════════════════════════════════ */
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('refreshStatus');
+  if (el) { el.textContent = msg; el.className = 'refresh-status ' + (cls || ''); }
+}
+
+function fmt(n) {
+  return (n || 0).toLocaleString('es-PE');
+}
+
+function fmtHora(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: PANEL DUEL
+══════════════════════════════════════════════════════════════ */
+
+function renderDuel(nat) {
+  const keiko = nat.candidates.fuji;
+  const sanch = nat.candidates.sanch;
+  const vv = nat.votosValidos;
+
+  // Porcentajes en la barra
+  const kBarPct = Math.max(2, Math.min(98, keiko)).toFixed(1);
+  const sBarPct = (100 - parseFloat(kBarPct)).toFixed(1);
+
+  document.getElementById('barKeiko').style.width = kBarPct + '%';
+  document.getElementById('barSanch').style.width  = sBarPct + '%';
+  document.getElementById('barLabelKeiko').textContent = keiko.toFixed(2) + '%';
+  document.getElementById('barLabelSanch').textContent = sanch.toFixed(2) + '%';
+
+  document.getElementById('pctKeiko').textContent = keiko.toFixed(2);
+  document.getElementById('pctSanch').textContent = sanch.toFixed(2);
+
+  // Votos estimados
+  const votosKeiko = Math.round(vv * keiko / 100);
+  const votosSanch = Math.round(vv * sanch / 100);
+  document.getElementById('votosKeiko').textContent = '~' + fmt(votosKeiko) + ' votos';
+  document.getElementById('votosSanch').textContent = '~' + fmt(votosSanch) + ' votos';
+
+  // Margen
+  const gapPct  = Math.abs(keiko - sanch);
+  const gapVotos = Math.abs(votosKeiko - votosSanch);
+  const lider = keiko > sanch ? 'Fujimori' : 'Sánchez';
+  const colorLider = keiko > sanch ? C_KEIKO : C_SANCH;
+
+  const margenEl = document.getElementById('margenValor');
+  margenEl.style.color = colorLider;
+  margenEl.textContent = '+' + gapPct.toFixed(2) + 'pp · ~' + fmt(gapVotos) + ' votos';
+
+  document.getElementById('margenSub').textContent =
+    `${lider} va adelante · con ${nat.pct.toFixed(2)}% de actas`;
+
+  // Banner de resultado definitivo (al llegar al 99%)
+  const banner = document.getElementById('resultadoBanner');
+  if (nat.pct >= 99) {
+    banner.textContent = keiko > sanch
+      ? `✅ KEIKO FUJIMORI — Presidenta electa (${keiko.toFixed(2)}% vs ${sanch.toFixed(2)}%)`
+      : `✅ ROBERTO SÁNCHEZ — Presidente electo (${sanch.toFixed(2)}% vs ${keiko.toFixed(2)}%)`;
+    banner.className = 'resultado-banner ' + (keiko > sanch ? 'ganador-keiko' : 'ganador-sanch');
+  } else {
+    banner.className = 'resultado-banner';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: ACTAS PROGRESS
+══════════════════════════════════════════════════════════════ */
+
+function renderActas(nat) {
+  document.getElementById('actasPct').innerHTML =
+    nat.pct.toFixed(2) + '<span style="font-size:18px;color:var(--tx3)">%</span>';
+  document.getElementById('progressFill').style.width = Math.min(100, nat.pct) + '%';
+  document.getElementById('actasDetail').textContent =
+    `${fmt(nat.contabilizadas)} de ${fmt(nat.totalActas)} actas`;
+  document.getElementById('actasTotal').textContent = fmt(nat.totalActas);
+  document.getElementById('actasContab').textContent = fmt(nat.contabilizadas);
+  document.getElementById('actasJee').textContent = fmt(nat.enviadasJee);
+  document.getElementById('actasUpdate').textContent = fmtHora(nat.fechaActualizacion);
+
+  // JEE badge
+  if (nat.enviadasJee > 0) {
+    const avgVV = nat.votosValidos / (nat.contabilizadas || 1);
+    document.getElementById('jeeActas').textContent = fmt(nat.enviadasJee);
+    document.getElementById('jeeVotos').textContent = '~' + fmt(Math.round(nat.enviadasJee * avgVV));
+    document.getElementById('jeeBadge').style.display = '';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: REGION GRID (lista debajo del mapa)
+══════════════════════════════════════════════════════════════ */
+
+function renderRegionGrid(regions) {
+  const el = document.getElementById('regionGrid');
+  if (!el) return;
+  const sorted = [...regions].filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct);
+  el.innerHTML = sorted.map(r => {
+    const winner = r.fuji >= r.sanch ? 'keiko' : 'sanch';
+    const color  = winner === 'keiko' ? C_KEIKO : C_SANCH;
+    const leadPct = (winner === 'keiko' ? r.fuji : r.sanch).toFixed(1);
+    return `<div class="rg-item">
+      <div class="rg-dot" style="background:${color}"></div>
+      <div class="rg-name">${r.name}</div>
+      <div class="rg-pct">${leadPct}% · ${r.pct.toFixed(0)}%✓</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAPA D3
+══════════════════════════════════════════════════════════════ */
+
+const GEO_CENTERS = {
+  'Amazonas':[-78,-6],'Áncash':[-77.5,-9.3],'Apurímac':[-73,-14],'Arequipa':[-72,-15.8],
+  'Ayacucho':[-74,-13.8],'Cajamarca':[-78.5,-6.8],'Callao':[-77.12,-12.05],'Cusco':[-72,-13.2],
+  'Huancavelica':[-75.2,-13],'Huánuco':[-76.2,-9.5],'Ica':[-75.5,-14.5],'Junín':[-75.3,-11.5],
+  'La Libertad':[-78.5,-8],'Lambayeque':[-79.8,-6.5],'Lima':[-76.6,-12],'Loreto':[-75.5,-4.5],
+  'Madre de Dios':[-70.5,-12],'Moquegua':[-70.9,-17],'Pasco':[-76,-10.4],'Piura':[-80.3,-5],
+  'Puno':[-70,-15.2],'San Martín':[-76.7,-7],'Tacna':[-70.3,-17.6],'Tumbes':[-80.4,-3.7],
+  'Ucayali':[-74,-9.5]
+};
+
+let geoData = null;
+let geoMatchMap = null;
+let svgEl = null;
+
+function haversine(a, b) {
+  const R = 6371, dL = (b[1]-a[1])*Math.PI/180, dN = (b[0]-a[0])*Math.PI/180;
+  const x = Math.sin(dL/2)**2 + Math.cos(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.sin(dN/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+async function initMap() {
+  try {
+    const resp = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json').catch(() => null);
+    // Si no hay GeoJSON de Perú disponible, skip mapa
+    // Para producción usar el mismo TopoJSON del repo original
+    const topo = await fetch('https://raw.githubusercontent.com/MrSprintALot/Peru_Elecciones_2026_v2/main/peru-topo.json')
+      .catch(() => null);
+
+    if (!topo || !topo.ok) {
+      document.getElementById('mapLoader').textContent = 'Mapa no disponible (TopoJSON pendiente)';
+      return;
+    }
+
+    geoData = await topo.json();
+    renderMap();
+  } catch (e) {
+    document.getElementById('mapLoader').textContent = 'Error al cargar mapa';
+  }
+}
+
+function renderMap() {
+  const container = document.getElementById('mapContainer');
+  if (!container || !geoData) return;
+  document.getElementById('mapLoader').style.display = 'none';
+
+  const W = container.offsetWidth || 300;
+  const H = W * 1.3;
+
+  if (svgEl) svgEl.remove();
+
+  const svg = d3.select('#mapContainer').append('svg')
+    .attr('width', W).attr('height', H);
+  svgEl = svg.node();
+
+  const features = topojson.feature(geoData, geoData.objects[Object.keys(geoData.objects)[0]]).features;
+  const projection = d3.geoMercator().fitSize([W, H], { type: 'FeatureCollection', features });
+  const path = d3.geoPath(projection);
+
+  // Build geo match once
+  if (!geoMatchMap) {
+    geoMatchMap = {};
+    const assigned = new Set();
+    const byArea = features.map((f,i) => ({ i, c: d3.geoCentroid(f), area: path.area(f) }))
+      .sort((a,b) => b.area - a.area);
+    byArea.forEach(feat => {
+      let best = null, dist = Infinity;
+      for (const [dept, ctr] of Object.entries(GEO_CENTERS)) {
+        if (assigned.has(dept)) continue;
+        const d = haversine([feat.c[0], feat.c[1]], ctr);
+        if (d < dist) { dist = d; best = dept; }
+      }
+      if (best && dist < 300) { geoMatchMap[feat.i] = best; assigned.add(best); }
+    });
+  }
+
+  // Mapa de nombre → datos de región
+  const regionByName = {};
+  REGIONS.forEach(r => { regionByName[r.name] = r; });
+
+  svg.selectAll('path').data(features).enter().append('path')
+    .attr('d', path)
+    .attr('fill', (f, i) => {
+      const dept = geoMatchMap[i];
+      const r = dept ? regionByName[dept] : null;
+      if (!r || r.pct === 0) return '#1e2230';
+      if (r.fuji > r.sanch) return C_KEIKO + 'cc';
+      if (r.sanch > r.fuji) return C_SANCH + 'cc';
+      return '#555';
+    })
+    .attr('stroke', '#0f1117').attr('stroke-width', 0.5)
+    .append('title').text((f, i) => {
+      const dept = geoMatchMap[i];
+      const r = dept ? regionByName[dept] : null;
+      if (!r) return dept || '?';
+      return `${r.name}: Keiko ${r.fuji.toFixed(1)}% | Sánchez ${r.sanch.toFixed(1)}% | ${r.pct.toFixed(1)}% actas`;
+    });
+}
+
+function updateMapColors() {
+  if (!svgEl || !geoData) return;
+  const features = topojson.feature(geoData, geoData.objects[Object.keys(geoData.objects)[0]]).features;
+  const regionByName = {};
+  REGIONS.forEach(r => { regionByName[r.name] = r; });
+
+  d3.select(svgEl).selectAll('path')
+    .attr('fill', (f, i) => {
+      const dept = geoMatchMap ? geoMatchMap[i] : null;
+      const r = dept ? regionByName[dept] : null;
+      if (!r || r.pct === 0) return '#1e2230';
+      if (r.fuji > r.sanch) return C_KEIKO + 'cc';
+      if (r.sanch > r.fuji) return C_SANCH + 'cc';
+      return '#555';
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHART — Evolución temporal
+══════════════════════════════════════════════════════════════ */
+
+let trackingChart = null;
+
+function renderTrackingChart() {
+  const ctx = document.getElementById('trackingChart');
+  if (!ctx || TRACKING.length < 2) return;
+
+  if (trackingChart) { trackingChart.destroy(); trackingChart = null; }
+
+  const cuts = TRACKING;
+  const last = cuts[cuts.length - 1];
+
+  // Proyección simple al 100%: proporcional a última tendencia
+  const projKeiko = last.keiko; // segunda vuelta: porcentaje es suficientemente estable
+  const projSanch  = last.sanch;
+
+  const datasets = [
+    {
+      label: 'Fujimori',
+      data: cuts.map(c => ({ x: c.pct, y: c.keiko })),
+      borderColor: C_KEIKO, backgroundColor: C_KEIKO,
+      borderWidth: 2.5, pointRadius: 3, tension: 0.3,
+    },
+    {
+      label: 'Fujimori →',
+      data: [{ x: last.pct, y: last.keiko }, { x: 100, y: projKeiko }],
+      borderColor: C_KEIKO + '99', backgroundColor: C_KEIKO,
+      borderWidth: 2, borderDash: [8, 5],
+      pointRadius: [0, 6], pointStyle: ['circle', 'rectRot'],
+      pointBackgroundColor: C_KEIKO, pointBorderColor: '#181b24', pointBorderWidth: 2,
+      tension: 0,
+    },
+    {
+      label: 'Sánchez',
+      data: cuts.map(c => ({ x: c.pct, y: c.sanch })),
+      borderColor: C_SANCH, backgroundColor: C_SANCH,
+      borderWidth: 2.5, pointRadius: 3, tension: 0.3,
+    },
+    {
+      label: 'Sánchez →',
+      data: [{ x: last.pct, y: last.sanch }, { x: 100, y: projSanch }],
+      borderColor: C_SANCH + '99', backgroundColor: C_SANCH,
+      borderWidth: 2, borderDash: [8, 5],
+      pointRadius: [0, 6], pointStyle: ['circle', 'rectRot'],
+      pointBackgroundColor: C_SANCH, pointBorderColor: '#181b24', pointBorderWidth: 2,
+      tension: 0,
+    },
+  ];
+
+  const allY = cuts.flatMap(c => [c.keiko, c.sanch]).concat([projKeiko, projSanch]);
+  const yMin = Math.floor(Math.min(...allY) - 2);
+  const yMax  = Math.ceil(Math.max(...allY) + 2);
+
+  trackingChart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, showLine: true,
+      animation: { duration: 600 },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: {
+        legend: { display: true, labels: {
+          color: '#9aa0ab', font: { family: '"DM Sans"', size: 11 },
+          filter: item => !item.text.includes('→'),
+          boxWidth: 12, boxHeight: 12,
+        }},
+        tooltip: {
+          backgroundColor: '#1e2230', titleColor: '#e8eaed', bodyColor: '#9aa0ab',
+          borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, padding: 10,
+          filter: item => !item.dataset.label.includes('→'),
+          callbacks: {
+            title: items => items[0].parsed.x.toFixed(1) + '% actas',
+            label: item => ` ${item.dataset.label}: ${item.parsed.y.toFixed(2)}%`,
+          }
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear', min: 0, max: 105,
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, stepSize: 10, callback: v => v + '%' },
+          title: { display: true, text: '% actas', color: '#5f6673', font: { size: 10 } },
+        },
+        y: {
+          min: yMin, max: yMax,
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, callback: v => v + '%' },
+          title: { display: true, text: '% votos válidos', color: '#5f6673', font: { size: 10 } },
+        },
+      }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FETCH DESDE ONPE VÍA WORKER
+══════════════════════════════════════════════════════════════ */
+
+async function refreshFromONPE() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading'); btn.disabled = true;
+  setStatus('Consultando ONPE...', '');
+
+  try {
+    // El Worker usa el patrón half=1 / half=2 para no exceder
+    // el límite de 50 subrequests del free tier.
+    // half=1 trae el nacional + primeras 13 regiones.
+    // half=2 trae las 13 regiones restantes.
+    setStatus('Obteniendo datos (1/2)...', '');
+    const resp1 = await fetch(WORKER_URL + '/api/snapshot?half=1');
+    if (!resp1.ok) throw new Error('Half 1: HTTP ' + resp1.status);
+    const snap1 = await resp1.json();
+    if (snap1.error) throw new Error(snap1.error);
+
+    setStatus('Obteniendo datos (2/2)...', '');
+    const resp2 = await fetch(WORKER_URL + '/api/snapshot?half=2');
+    if (!resp2.ok) throw new Error('Half 2: HTTP ' + resp2.status);
+    const snap2 = await resp2.json();
+    if (snap2.error) throw new Error(snap2.error);
+
+    // Combinar
+    NATIONAL = snap1.national;
+    REGIONS  = [...(snap1.regions || []), ...(snap2.regions || [])];
+
+    // ── Tracking: preferir el histórico persistido en KV ──
+    // El Worker guarda cada corte en KV. Lo traemos para tener
+    // la curva completa de evolución (no solo desde que abriste la página).
+    try {
+      const respT = await fetch(WORKER_URL + '/api/tracking');
+      if (respT.ok) {
+        const t = await respT.json();
+        if (t.cuts && t.cuts.length > 0) {
+          TRACKING = t.cuts.map(c => ({ pct: c.pct, keiko: c.keiko, sanch: c.sanch }));
+        }
+      }
+    } catch (e) { /* si falla, seguimos con el tracking local */ }
+
+    // Si el tracking del KV está vacío, lo construimos localmente
+    if (TRACKING.length === 0 && NATIONAL) {
+      TRACKING.push({ pct: NATIONAL.pct, keiko: NATIONAL.candidates.fuji, sanch: NATIONAL.candidates.sanch });
+    } else if (NATIONAL) {
+      // Asegurar que el último punto refleje el dato más reciente
+      const last = TRACKING[TRACKING.length - 1];
+      const cut = { pct: NATIONAL.pct, keiko: NATIONAL.candidates.fuji, sanch: NATIONAL.candidates.sanch };
+      if (!last || NATIONAL.pct > last.pct + 0.3) TRACKING.push(cut);
+      else if (NATIONAL.pct >= last.pct) Object.assign(last, cut);
+    }
+
+    // Render
+    renderDuel(NATIONAL);
+    renderActas(NATIONAL);
+    renderRegionGrid(REGIONS);
+    if (REGIONS.length > 0) updateMapColors();
+    if (TRACKING.length >= 2) renderTrackingChart();
+
+    const hora = new Date().toLocaleTimeString('es-PE');
+    setStatus(`✓ Actualizado · ${hora}`, 'ok');
+    startTimer();
+
+  } catch (e) {
+    console.error('Refresh error:', e);
+    setStatus('Error: ' + e.message, 'error');
+    startTimer();
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Cargar mapa
+  initMap();
+
+  // Primer fetch
+  refreshFromONPE();
+});
+</script>
+</body>
+</html>
