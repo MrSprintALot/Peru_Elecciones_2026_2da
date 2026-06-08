@@ -298,6 +298,15 @@
       font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
       text-transform: uppercase; color: var(--tx3); max-width: 16ch;
     }
+    .actas-headline { cursor: help; }
+    .actas-info {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 13px; height: 13px; border-radius: 50%;
+      border: 1px solid var(--tx3); color: var(--tx3);
+      font-size: 9px; font-style: italic; letter-spacing: 0;
+      vertical-align: 1px; margin-left: 3px; transition: color .15s, border-color .15s;
+    }
+    .actas-headline:hover .actas-info { color: var(--tx1); border-color: var(--tx1); }
     .actas-detail {
       font-family: var(--mono); font-size: 12.5px; color: var(--tx2);
       text-align: right; align-self: flex-end;
@@ -536,9 +545,9 @@
   <!-- ══════════════ ACTAS STRIP ══════════════ -->
   <section class="actas-strip">
     <div class="actas-top">
-      <div class="actas-headline">
+      <div class="actas-headline" id="actasHeadline">
         <div class="actas-pct num" id="actasPct">—<span style="font-size:18px;color:var(--tx3)">%</span></div>
-        <div class="actas-label">Actas contabilizadas</div>
+        <div class="actas-label">Actas contabilizadas <span class="actas-info" aria-label="Información">i</span></div>
       </div>
       <div class="actas-detail" id="actasDetail">Cargando...</div>
     </div>
@@ -598,7 +607,7 @@
       <span class="kicker-tick"></span>
       <span class="kicker-label">Resultado por región</span>
       <span class="kicker-rule"></span>
-      <span class="kicker-note">26 circunscripciones</span>
+      <span class="kicker-note">26 regiones</span>
     </div>
     <div class="region-grid" id="regionGrid"></div>
   </section>
@@ -780,7 +789,8 @@ function renderRegionGrid(regions) {
     const winner = r.fuji >= r.sanch ? 'keiko' : 'sanch';
     const color  = winner === 'keiko' ? C_KEIKO : C_SANCH;
     const leadPct = (winner === 'keiko' ? r.fuji : r.sanch).toFixed(1);
-    return `<div class="rg-item">
+    const tip = `${r.name} — Fujimori ${r.fuji.toFixed(1)}% · Sánchez ${r.sanch.toFixed(1)}% · Conteo al ${r.pct.toFixed(1)}%`;
+    return `<div class="rg-item" title="${tip}">
       <div class="rg-dot" style="background:${color}"></div>
       <div class="rg-name">${r.name}</div>
       <div class="rg-pct">${leadPct}% · ${r.pct.toFixed(0)}%✓</div>
@@ -879,12 +889,75 @@ function renderMap() {
       return '#555';
     })
     .attr('stroke', '#0f1117').attr('stroke-width', 0.5)
-    .append('title').text((f, i) => {
+    .style('cursor', 'pointer')
+    .on('mousemove', function (event, f) {
+      const i = features.indexOf(f);
       const dept = geoMatchMap[i];
       const r = dept ? regionByName[dept] : null;
-      if (!r) return dept || '?';
-      return `${r.name}: Keiko ${r.fuji.toFixed(1)}% | Sánchez ${r.sanch.toFixed(1)}% | ${r.pct.toFixed(1)}% actas`;
+      showMapTooltip(event, dept, r);
+      d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1.2).raise();
+    })
+    .on('mouseleave', function () {
+      hideMapTooltip();
+      d3.select(this).attr('stroke', '#0f1117').attr('stroke-width', 0.5);
     });
+}
+
+/* ── Tooltip flotante propio para el mapa ── */
+function ensureMapTooltip() {
+  let tip = document.getElementById('mapTooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'mapTooltip';
+    tip.style.cssText = [
+      'position:fixed', 'pointer-events:none', 'z-index:9999',
+      'background:#1e2230', 'border:1px solid rgba(255,255,255,.14)',
+      'border-radius:5px', 'padding:9px 11px', 'display:none',
+      "font-family:'DM Mono',monospace", 'font-size:11.5px',
+      'color:#e8eaed', 'line-height:1.5', 'box-shadow:0 6px 20px rgba(0,0,0,.5)',
+      'max-width:220px'
+    ].join(';');
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+
+function showMapTooltip(event, dept, r) {
+  const tip = ensureMapTooltip();
+  if (!r || r.pct === 0) {
+    tip.innerHTML = `<strong style="font-family:'DM Sans',sans-serif;font-size:13px">${dept || '—'}</strong>
+      <div style="color:#9aa0ab;margin-top:3px">Sin datos aún</div>`;
+  } else {
+    const ganaK = r.fuji >= r.sanch;
+    tip.innerHTML = `
+      <strong style="font-family:'DM Sans',sans-serif;font-size:13px">${r.name}</strong>
+      <div style="margin-top:6px;display:flex;justify-content:space-between;gap:14px">
+        <span style="color:${C_KEIKO}">${ganaK ? '&#9654; ' : ''}Fujimori</span>
+        <span style="color:${C_KEIKO};font-weight:500">${r.fuji.toFixed(1)}%</span>
+      </div>
+      <div style="margin-top:2px;display:flex;justify-content:space-between;gap:14px">
+        <span style="color:${C_SANCH}">${!ganaK ? '&#9654; ' : ''}Sánchez</span>
+        <span style="color:${C_SANCH};font-weight:500">${r.sanch.toFixed(1)}%</span>
+      </div>
+      <div style="color:#616875;margin-top:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:5px">
+        Conteo al ${r.pct.toFixed(1)}%
+      </div>`;
+  }
+  tip.style.display = 'block';
+  // Posición: a la derecha del cursor, evitando salir de pantalla
+  const pad = 14;
+  let x = event.clientX + pad;
+  let y = event.clientY + pad;
+  const rect = tip.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth)  x = event.clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight) y = event.clientY - rect.height - pad;
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+}
+
+function hideMapTooltip() {
+  const tip = document.getElementById('mapTooltip');
+  if (tip) tip.style.display = 'none';
 }
 
 function updateMapColors() {
@@ -976,16 +1049,23 @@ function renderTrackingChart() {
         tooltip: {
           backgroundColor: '#1e2230', titleColor: '#e8eaed', bodyColor: '#9aa0ab',
           borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, padding: 10,
+          // Ignorar por completo las series de proyección (líneas punteadas "→").
+          // Si el tooltip cae sobre un punto de proyección, devolvemos false
+          // para no mostrar un tooltip vacío que se queda "pegado".
           filter: item => !item.dataset.label.includes('→'),
+          // Solo mostrar el tooltip si hay al menos un punto de serie real bajo el cursor.
           callbacks: {
-            title: items => items[0].parsed.x.toFixed(1) + '% actas',
+            title: items => {
+              const real = items.filter(i => !i.dataset.label.includes('→'));
+              return real.length ? real[0].parsed.x.toFixed(1) + '% actas' : '';
+            },
             label: item => ` ${item.dataset.label}: ${item.parsed.y.toFixed(2)}%`,
           }
         },
       },
       scales: {
         x: {
-          type: 'linear', min: 0, max: 105,
+          type: 'linear', min: 0, max: 100,
           grid: { color: 'rgba(255,255,255,.04)' },
           ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, stepSize: 10, callback: v => v + '%' },
           title: { display: true, text: '% actas', color: '#5f6673', font: { size: 10 } },
@@ -1082,6 +1162,38 @@ async function refreshFromONPE() {
 document.addEventListener('DOMContentLoaded', () => {
   // Cargar mapa
   initMap();
+
+  // Tooltip explicativo sobre el bloque de actas contabilizadas.
+  // Aclara que el desfase de tiempo viene del corte de ONPE, no del dashboard.
+  const headline = document.getElementById('actasHeadline');
+  if (headline) {
+    headline.addEventListener('mousemove', (e) => {
+      const tip = ensureMapTooltip();
+      const horaOnpe = NATIONAL && NATIONAL.fechaActualizacion
+        ? fmtHora(NATIONAL.fechaActualizacion) : '—';
+      tip.innerHTML = `
+        <strong style="font-family:'DM Sans',sans-serif;font-size:13px">¿Por qué la hora no coincide?</strong>
+        <div style="color:#9aa0ab;margin-top:6px;font-family:'DM Sans',sans-serif;font-size:11.5px;line-height:1.55">
+          Esta cifra corresponde al <span style="color:#edeff2">último corte oficial de ONPE</span>
+          (${horaOnpe}), no a la hora en que cargó el dashboard.
+          ONPE publica los datos por cortes, no de forma continua, así que puede haber
+          unos minutos de diferencia. Los votos y las actas siempre vienen del mismo corte.
+        </div>`;
+      tip.style.maxWidth = '260px';
+      tip.style.display = 'block';
+      const pad = 14;
+      let x = e.clientX + pad, y = e.clientY + pad;
+      const rect = tip.getBoundingClientRect();
+      if (x + rect.width > window.innerWidth)  x = e.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight) y = e.clientY - rect.height - pad;
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    });
+    headline.addEventListener('mouseleave', () => {
+      hideMapTooltip();
+      const tip = document.getElementById('mapTooltip');
+      if (tip) tip.style.maxWidth = '220px'; // restaurar ancho default del mapa
+    });
+  }
 
   // Primer fetch
   refreshFromONPE();
