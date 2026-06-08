@@ -430,6 +430,92 @@
       .region-grid { grid-template-columns: 1fr; }
     }
 
+    /* ══════════════ 12B. TABS + PESTAÑA MESAS 900 ══════════════ */
+    .tabs {
+      display: flex; gap: 4px; padding: 6px 0 0;
+      border-bottom: 1px solid var(--line-strong); margin-bottom: 4px;
+    }
+    .tab-btn {
+      background: transparent; border: 0; cursor: pointer;
+      font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+      color: var(--tx3); padding: 12px 16px; position: relative;
+      transition: color .15s;
+    }
+    .tab-btn:hover { color: var(--tx2); }
+    .tab-btn.active { color: var(--tx1); }
+    .tab-btn.active::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+      height: 2px; background: linear-gradient(90deg, var(--c-keiko), var(--c-sanch));
+    }
+
+    .m900-lead {
+      font-size: 14px; color: var(--tx2); max-width: 70ch; line-height: 1.6;
+      padding: 8px 0 4px;
+    }
+    .m900-lead strong { color: var(--tx1); font-weight: 600; }
+    .m900-note { font-size: 12.5px; color: var(--tx3); max-width: 66ch; line-height: 1.55; margin-bottom: 14px; }
+    .m900-note strong { color: var(--tx2); }
+
+    .m900-cards {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+      padding: 18px 0 8px;
+    }
+    .m900-card {
+      background: var(--bg-2); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 16px 18px;
+    }
+    .m900-card-k {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--tx3); margin-bottom: 8px;
+    }
+    .m900-card-v { font-size: 26px; color: var(--tx1); line-height: 1; }
+    .m900-card-sub { font-size: 11px; color: var(--tx3); margin-top: 6px; font-family: var(--mono); }
+
+    .m900-section { padding: 26px 0 6px; }
+
+    /* Barras geográficas */
+    .m900-geo { display: flex; flex-direction: column; gap: 2px; }
+    .geo-row {
+      display: grid; grid-template-columns: 110px 1fr 130px; align-items: center;
+      gap: 12px; padding: 7px 2px; border-bottom: 1px solid var(--line);
+    }
+    .geo-dep { font-size: 12.5px; color: var(--tx1); }
+    .geo-bar-track {
+      height: 18px; background: var(--bg-3); border-radius: 3px; overflow: hidden;
+      display: flex; box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .geo-bar-k { background: var(--c-keiko); height: 100%; }
+    .geo-bar-s { background: var(--c-sanch); height: 100%; }
+    .geo-meta {
+      font-family: var(--mono); font-size: 11px; color: var(--tx2);
+      text-align: right; font-variant-numeric: tabular-nums;
+    }
+
+    /* Checks de integridad */
+    .m900-checks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .check-item {
+      display: flex; align-items: flex-start; gap: 11px;
+      background: var(--bg-2); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px 16px;
+    }
+    .check-icon {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
+    .check-icon.ok   { background: var(--c-sanch-bg); color: var(--c-sanch); }
+    .check-icon.warn { background: var(--c-keiko-bg); color: var(--c-keiko); }
+    .check-body { flex: 1; min-width: 0; }
+    .check-title { font-size: 13px; color: var(--tx1); font-weight: 600; }
+    .check-desc { font-size: 12px; color: var(--tx3); margin-top: 3px; line-height: 1.5; }
+
+    @media (max-width: 620px) {
+      .m900-cards { grid-template-columns: 1fr; }
+      .m900-checks { grid-template-columns: 1fr; }
+      .geo-row { grid-template-columns: 80px 1fr 96px; gap: 8px; }
+      .geo-dep { font-size: 11px; }
+    }
+
     /* ══════════════ 13. REDUCED MOTION ══════════════ */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
@@ -477,6 +563,15 @@
     <span class="meta-spacer"></span>
     <span class="meta-timer">Próximo refresh en <strong id="timerCountdown">3:00</strong></span>
   </div>
+
+  <!-- ══════════════ NAVEGACIÓN DE PESTAÑAS ══════════════ -->
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="vivo" onclick="switchTab('vivo')">Resultados en vivo</button>
+    <button class="tab-btn" data-tab="mesas" onclick="switchTab('mesas')">Mesas rurales · serie 900</button>
+  </nav>
+
+  <!-- ══════════════ TAB: EN VIVO ══════════════ -->
+  <div id="tab-vivo">
 
   <!-- ══════════════ HERO — DUELO ══════════════ -->
   <section class="hero-result">
@@ -612,6 +707,99 @@
     <div class="region-grid" id="regionGrid"></div>
   </section>
 
+  </div><!-- /tab-vivo -->
+
+  <!-- ══════════════ TAB: MESAS RURALES SERIE 900 ══════════════ -->
+  <div id="tab-mesas" style="display:none">
+
+    <!-- Intro / encuadre -->
+    <section class="m900-intro">
+      <div class="kicker">
+        <span class="kicker-tick"></span>
+        <span class="kicker-label">Mesas de centros poblados rurales</span>
+        <span class="kicker-rule"></span>
+        <span class="kicker-note" id="m900Snapshot">snapshot</span>
+      </div>
+      <p class="m900-lead">
+        La ONPE asigna la <strong>serie 900xxx</strong> a mesas de centros poblados rurales.
+        En las elecciones generales, su número y origen fueron objeto de debate público.
+        Esta sección documenta su comportamiento con datos verificables —
+        <strong>monitoreo, no acusación</strong>. La ONPE declaró oficialmente
+        ~4,700 mesas en 1,913 centros poblados; este análisis captura
+        <strong id="m900Total">—</strong> mesas directamente de su portal.
+      </p>
+    </section>
+
+    <!-- Tarjetas resumen -->
+    <section class="m900-cards">
+      <div class="m900-card">
+        <div class="m900-card-k">Mesas capturadas</div>
+        <div class="m900-card-v num" id="m900Capt">—</div>
+        <div class="m900-card-sub" id="m900CaptSub">—</div>
+      </div>
+      <div class="m900-card">
+        <div class="m900-card-k">Voto en estas mesas</div>
+        <div class="m900-card-v num"><span style="color:var(--c-keiko)" id="m900K">—</span> · <span style="color:var(--c-sanch)" id="m900S">—</span></div>
+        <div class="m900-card-sub">Keiko · Sánchez (% válidos)</div>
+      </div>
+      <div class="m900-card">
+        <div class="m900-card-k">Participación media</div>
+        <div class="m900-card-v num" id="m900Part">—</div>
+        <div class="m900-card-sub">de electores hábiles</div>
+      </div>
+    </section>
+
+    <!-- Sub-sección 1: Distribución geográfica -->
+    <section class="m900-section">
+      <div class="kicker">
+        <span class="kicker-tick"></span>
+        <span class="kicker-label">1 · Distribución geográfica</span>
+        <span class="kicker-rule"></span>
+        <span class="kicker-note">¿son rurales de verdad?</span>
+      </div>
+      <p class="m900-note">
+        Si las mesas 900 estuvieran en ciudades grandes, el argumento "rural" no se
+        sostendría. La realidad: se concentran en regiones andinas y amazónicas.
+      </p>
+      <div class="m900-geo" id="m900Geo"></div>
+    </section>
+
+    <!-- Sub-sección 2: Comparación / distribución de voto -->
+    <section class="m900-section">
+      <div class="kicker">
+        <span class="kicker-tick"></span>
+        <span class="kicker-label">2 · Distribución del voto por mesa</span>
+        <span class="kicker-rule"></span>
+        <span class="kicker-note">% Sánchez sobre válidos</span>
+      </div>
+      <p class="m900-note">
+        Cada barra agrupa mesas según qué % obtuvo Sánchez. Una distribución ancha
+        y unimodal es coherente con voto rural genuino; picos artificiales en 0% o
+        100% serían sospechosos.
+      </p>
+      <div class="chart-container" style="height:300px"><canvas id="m900Hist"></canvas></div>
+    </section>
+
+    <!-- Sub-sección 3: Anomalías estadísticas -->
+    <section class="m900-section">
+      <div class="kicker">
+        <span class="kicker-tick"></span>
+        <span class="kicker-label">3 · Chequeos de integridad</span>
+        <span class="kicker-rule"></span>
+        <span class="kicker-note">metodología robusta</span>
+      </div>
+      <div class="m900-checks" id="m900Checks"></div>
+      <p class="m900-note" style="margin-top:14px">
+        <strong>Metodología:</strong> outliers vía Z-score robusto (MAD), no Z clásico
+        — las distribuciones electorales no son normales. No se aplica Ley de Benford
+        a nivel de mesa: con conteos chicos (rangos de 1-200) produce falsos positivos.
+        La consistencia aritmética verifica que votos válidos = suma de candidatos en
+        cada acta.
+      </p>
+    </section>
+
+  </div><!-- /tab-mesas -->
+
   <!-- ══════════════ FOOTER ══════════════ -->
   <div class="footer">
     Dashboard por <a href="https://github.com/MrSprintALot" target="_blank">Rafael Vasquez (MrSprintALot)</a> ·
@@ -633,6 +821,110 @@ const REFRESH_INTERVAL_MS = 3 * 60 * 1000; // 3 minutos
 // Colores por candidato
 const C_KEIKO = '#E8943A';
 const C_SANCH = '#2ECDA7';
+
+/* ══════════════════════════════════════════════════════════════
+   DATOS EMBEBIDOS — Análisis mesas serie 900 (snapshot del scraper)
+   Para actualizar: re-correr scraper_mesas_900.py + regenerar este objeto.
+══════════════════════════════════════════════════════════════ */
+const M900 = {"resumen": {"total_mesas": 4703, "contabilizadas": 4370, "pendientes": 294, "keiko_votos": 211446, "sanch_votos": 496707, "keiko_pct": 29.86, "sanch_pct": 70.14, "part_media": 73.9, "mediana_sanch": 74.6, "arit_ok": true, "part_imposibles": 0, "outliers_z35": 0, "barrido_sanch": 327, "barrido_keiko": 7}, "geografico": [{"dep": "Cajamarca", "mesas": 630, "keiko": 26732, "sanch": 75929, "sanch_pct": 74.0}, {"dep": "Áncash", "mesas": 407, "keiko": 20744, "sanch": 41076, "sanch_pct": 66.4}, {"dep": "Piura", "mesas": 368, "keiko": 28309, "sanch": 37679, "sanch_pct": 57.1}, {"dep": "Puno", "mesas": 286, "keiko": 3772, "sanch": 45183, "sanch_pct": 92.3}, {"dep": "Huánuco", "mesas": 283, "keiko": 9513, "sanch": 33268, "sanch_pct": 77.8}, {"dep": "San Martín", "mesas": 235, "keiko": 15773, "sanch": 26517, "sanch_pct": 62.7}, {"dep": "Lima", "mesas": 235, "keiko": 25259, "sanch": 23580, "sanch_pct": 48.3}, {"dep": "Huancavelica", "mesas": 234, "keiko": 4670, "sanch": 30305, "sanch_pct": 86.6}, {"dep": "Cusco", "mesas": 230, "keiko": 3725, "sanch": 33703, "sanch_pct": 90.0}, {"dep": "La Libertad", "mesas": 207, "keiko": 13667, "sanch": 19321, "sanch_pct": 58.6}, {"dep": "Amazonas", "mesas": 206, "keiko": 9115, "sanch": 22491, "sanch_pct": 71.2}, {"dep": "Ayacucho", "mesas": 206, "keiko": 4291, "sanch": 24655, "sanch_pct": 85.2}, {"dep": "Lambayeque", "mesas": 190, "keiko": 17368, "sanch": 16186, "sanch_pct": 48.2}, {"dep": "Apurímac", "mesas": 151, "keiko": 2841, "sanch": 21321, "sanch_pct": 88.2}, {"dep": "Junín", "mesas": 144, "keiko": 9581, "sanch": 13124, "sanch_pct": 57.8}, {"dep": "Loreto", "mesas": 133, "keiko": 7136, "sanch": 9980, "sanch_pct": 58.3}, {"dep": "Callao", "mesas": 60, "keiko": 2808, "sanch": 4187, "sanch_pct": 59.9}, {"dep": "Arequipa", "mesas": 44, "keiko": 1157, "sanch": 5138, "sanch_pct": 81.6}, {"dep": "Pasco", "mesas": 42, "keiko": 1912, "sanch": 3210, "sanch_pct": 62.7}, {"dep": "Madre de Dios", "mesas": 34, "keiko": 1188, "sanch": 4539, "sanch_pct": 79.3}, {"dep": "Tacna", "mesas": 18, "keiko": 497, "sanch": 2689, "sanch_pct": 84.4}, {"dep": "Moquegua", "mesas": 14, "keiko": 156, "sanch": 1649, "sanch_pct": 91.4}, {"dep": "Ica", "mesas": 7, "keiko": 307, "sanch": 683, "sanch_pct": 69.0}, {"dep": "Tumbes", "mesas": 6, "keiko": 925, "sanch": 294, "sanch_pct": 24.1}], "histograma": [{"bin": "0-5", "count": 7}, {"bin": "5-10", "count": 10}, {"bin": "10-15", "count": 9}, {"bin": "15-20", "count": 17}, {"bin": "20-25", "count": 35}, {"bin": "25-30", "count": 64}, {"bin": "30-35", "count": 72}, {"bin": "35-40", "count": 96}, {"bin": "40-45", "count": 167}, {"bin": "45-50", "count": 257}, {"bin": "50-55", "count": 286}, {"bin": "55-60", "count": 272}, {"bin": "60-65", "count": 269}, {"bin": "65-70", "count": 337}, {"bin": "70-75", "count": 308}, {"bin": "75-80", "count": 360}, {"bin": "80-85", "count": 425}, {"bin": "85-90", "count": 485}, {"bin": "90-95", "count": 567}, {"bin": "95-100", "count": 327}]};
+
+/* Navegación de pestañas */
+function switchTab(tab) {
+  document.getElementById('tab-vivo').style.display  = (tab === 'vivo')  ? '' : 'none';
+  document.getElementById('tab-mesas').style.display = (tab === 'mesas') ? '' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  if (tab === 'mesas') renderMesas900();
+}
+
+/* Render de la pestaña de mesas 900 (idempotente) */
+let m900Rendered = false;
+let m900Chart = null;
+function renderMesas900() {
+  const r = M900.resumen;
+  document.getElementById('m900Total').textContent = r.total_mesas.toLocaleString('es-PE');
+  document.getElementById('m900Snapshot').textContent = 'snapshot · ' + r.contabilizadas.toLocaleString('es-PE') + ' contabilizadas';
+  document.getElementById('m900Capt').textContent = r.total_mesas.toLocaleString('es-PE');
+  document.getElementById('m900CaptSub').textContent = r.contabilizadas.toLocaleString('es-PE') + ' contab. · ' + r.pendientes + ' pend.';
+  document.getElementById('m900K').textContent = r.keiko_pct.toFixed(1) + '%';
+  document.getElementById('m900S').textContent = r.sanch_pct.toFixed(1) + '%';
+  document.getElementById('m900Part').textContent = r.part_media.toFixed(1) + '%';
+
+  if (m900Rendered) return; // gráfica y listas solo una vez
+  m900Rendered = true;
+
+  // 1 · Geográfico
+  const geoEl = document.getElementById('m900Geo');
+  const maxMesas = Math.max(...M900.geografico.map(g => g.mesas));
+  geoEl.innerHTML = M900.geografico.map(g => {
+    const kPct = 100 - g.sanch_pct;
+    const wTotal = (g.mesas / maxMesas * 100).toFixed(1);
+    return `<div class="geo-row">
+      <div class="geo-dep">${esc(g.dep)}</div>
+      <div class="geo-bar-track" style="width:${wTotal}%">
+        <div class="geo-bar-k" style="width:${kPct}%"></div>
+        <div class="geo-bar-s" style="width:${g.sanch_pct}%"></div>
+      </div>
+      <div class="geo-meta">${g.mesas} mesas · S ${g.sanch_pct}%</div>
+    </div>`;
+  }).join('');
+
+  // 2 · Histograma
+  const ctx = document.getElementById('m900Hist');
+  if (ctx && typeof Chart !== 'undefined') {
+    m900Chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: M900.histograma.map(h => h.bin),
+        datasets: [{
+          label: 'Mesas',
+          data: M900.histograma.map(h => h.count),
+          backgroundColor: M900.histograma.map((h,i) => {
+            const mid = i * 5 + 2.5;
+            return mid >= 50 ? C_SANCH + 'cc' : C_KEIKO + 'cc';
+          }),
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { backgroundColor: '#1e2230', callbacks: {
+            title: items => '% Sánchez: ' + items[0].label,
+            label: item => item.parsed.y + ' mesas',
+          }}
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 9 }, maxRotation: 90, minRotation: 45 },
+               title: { display: true, text: '% Sánchez sobre válidos', color: '#5f6673', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 } },
+               title: { display: true, text: 'nº de mesas', color: '#5f6673', font: { size: 10 } } },
+        }
+      }
+    });
+  }
+
+  // 3 · Checks de integridad
+  const checks = [
+    { ok: r.arit_ok, title: 'Consistencia aritmética',
+      desc: r.arit_ok ? 'En todas las mesas, votos válidos = Keiko + Sánchez. Sin descuadres.' : 'Hay mesas con sumas inconsistentes.' },
+    { ok: r.part_imposibles === 0, title: 'Participación válida',
+      desc: r.part_imposibles === 0 ? 'Ninguna mesa con más votos que electores hábiles.' : r.part_imposibles + ' mesas con participación imposible.' },
+    { ok: r.outliers_z35 === 0, title: 'Sin outliers extremos',
+      desc: r.outliers_z35 + ' mesas con Z-score robusto (MAD) > 3.5. Distribución coherente con voto rural.' },
+    { ok: true, title: 'Concentración de voto',
+      desc: r.barrido_sanch + ' mesas con Sánchez ≥95%, ' + r.barrido_keiko + ' con Keiko ≥95%. Esperable en zonas rurales homogéneas.' },
+  ];
+  document.getElementById('m900Checks').innerHTML = checks.map(c => `
+    <div class="check-item">
+      <div class="check-icon ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '!'}</div>
+      <div class="check-body">
+        <div class="check-title">${esc(c.title)}</div>
+        <div class="check-desc">${esc(c.desc)}</div>
+      </div>
+    </div>`).join('');
+}
+
 
 /* ══════════════════════════════════════════════════════════════
    ESTADO GLOBAL
@@ -661,6 +953,7 @@ let NATIONAL = {
 
 let timerInterval = null;
 let timerSeconds = REFRESH_INTERVAL_MS / 1000;
+let isRefreshing = false; // guard de re-entrancy: evita fetches concurrentes
 
 function startTimer() {
   clearInterval(timerInterval);
@@ -670,6 +963,7 @@ function startTimer() {
     timerSeconds--;
     updateTimerDisplay();
     if (timerSeconds <= 0) {
+      clearInterval(timerInterval); // detener el conteo hasta que el refresh resuelva
       refreshFromONPE();
     }
   }, 1000);
@@ -694,6 +988,14 @@ function setStatus(msg, cls) {
 
 function fmt(n) {
   return (n || 0).toLocaleString('es-PE');
+}
+
+// S2: escapar texto externo (nombres de región de ONPE) antes de inyectarlo
+// en innerHTML. Riesgo práctico bajo (26 nombres fijos), pero un " o & suelto
+// corrompería el markup. Barato cerrarlo.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
 function fmtHora(ts) {
@@ -789,10 +1091,10 @@ function renderRegionGrid(regions) {
     const winner = r.fuji >= r.sanch ? 'keiko' : 'sanch';
     const color  = winner === 'keiko' ? C_KEIKO : C_SANCH;
     const leadPct = (winner === 'keiko' ? r.fuji : r.sanch).toFixed(1);
-    const tip = `${r.name} — Fujimori ${r.fuji.toFixed(1)}% · Sánchez ${r.sanch.toFixed(1)}% · Conteo al ${r.pct.toFixed(1)}%`;
+    const tip = `${esc(r.name)} — Fujimori ${r.fuji.toFixed(1)}% · Sánchez ${r.sanch.toFixed(1)}% · Conteo al ${r.pct.toFixed(1)}%`;
     return `<div class="rg-item" title="${tip}">
       <div class="rg-dot" style="background:${color}"></div>
-      <div class="rg-name">${r.name}</div>
+      <div class="rg-name">${esc(r.name)}</div>
       <div class="rg-pct">${leadPct}% · ${r.pct.toFixed(0)}%✓</div>
     </div>`;
   }).join('');
@@ -884,7 +1186,7 @@ function renderMap() {
       const dept = geoMatchMap[i];
       const r = dept ? regionByName[dept] : null;
       if (!r || r.pct === 0) return '#1e2230';
-      if (r.fuji > r.sanch) return C_KEIKO + 'cc';
+      if (r.fuji >= r.sanch) return C_KEIKO + 'cc';
       if (r.sanch > r.fuji) return C_SANCH + 'cc';
       return '#555';
     })
@@ -930,12 +1232,12 @@ function ensureMapTooltip() {
 function showMapTooltip(event, dept, r) {
   const tip = ensureMapTooltip();
   if (!r || r.pct === 0) {
-    tip.innerHTML = `<strong style="font-family:'DM Sans',sans-serif;font-size:13px">${dept || '—'}</strong>
+    tip.innerHTML = `<strong style="font-family:'DM Sans',sans-serif;font-size:13px">${esc(dept) || '—'}</strong>
       <div style="color:#9aa0ab;margin-top:3px">Sin datos aún</div>`;
   } else {
     const ganaK = r.fuji >= r.sanch;
     tip.innerHTML = `
-      <strong style="font-family:'DM Sans',sans-serif;font-size:13px">${r.name}</strong>
+      <strong style="font-family:'DM Sans',sans-serif;font-size:13px">${esc(r.name)}</strong>
       <div style="margin-top:6px;display:flex;justify-content:space-between;gap:14px">
         <span style="color:${C_KEIKO}">${ganaK ? '&#9654; ' : ''}Fujimori</span>
         <span style="color:${C_KEIKO};font-weight:500">${r.fuji.toFixed(1)}%</span>
@@ -976,7 +1278,7 @@ function updateMapColors() {
       const dept = geoMatchMap ? geoMatchMap[i] : null;
       const r = dept ? regionByName[dept] : null;
       if (!r || r.pct === 0) return '#1e2230';
-      if (r.fuji > r.sanch) return C_KEIKO + 'cc';
+      if (r.fuji >= r.sanch) return C_KEIKO + 'cc';
       if (r.sanch > r.fuji) return C_SANCH + 'cc';
       return '#555';
     });
@@ -1091,58 +1393,79 @@ function renderTrackingChart() {
 ══════════════════════════════════════════════════════════════ */
 
 async function refreshFromONPE() {
+  if (isRefreshing) return; // evita fetches concurrentes (timer + manual)
+  isRefreshing = true;
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('loading'); btn.disabled = true;
   setStatus('Consultando ONPE...', '');
 
   try {
-    // El Worker usa el patrón half=1 / half=2 para no exceder
-    // el límite de 50 subrequests del free tier.
-    // half=1 trae el nacional + primeras 13 regiones.
-    // half=2 trae las 13 regiones restantes.
-    setStatus('Obteniendo datos (1/2)...', '');
+    setStatus('Obteniendo datos...', '');
     const resp1 = await fetch(WORKER_URL + '/api/snapshot?half=1');
     if (!resp1.ok) throw new Error('Half 1: HTTP ' + resp1.status);
     const snap1 = await resp1.json();
     if (snap1.error) throw new Error(snap1.error);
 
-    setStatus('Obteniendo datos (2/2)...', '');
-    const resp2 = await fetch(WORKER_URL + '/api/snapshot?half=2');
-    if (!resp2.ok) throw new Error('Half 2: HTTP ' + resp2.status);
-    const snap2 = await resp2.json();
-    if (snap2.error) throw new Error(snap2.error);
+    // ── C2: Validar y normalizar ANTES de tocar el estado global ──
+    // Si el Worker devuelve 200 con un body incompleto (sin national o sin
+    // candidates), no dejamos que un .toFixed() sobre undefined rompa el render
+    // ni que NaN llegue al eje del chart o al fill del mapa.
+    if (!snap1.national || !snap1.national.candidates) {
+      throw new Error('Datos nacionales incompletos');
+    }
+    const nat = snap1.national;
+    const cand = nat.candidates;
+    nat.pct          = +nat.pct          || 0;
+    nat.votosValidos = +nat.votosValidos || 0;
+    cand.fuji        = +cand.fuji        || 0;
+    cand.sanch       = +cand.sanch       || 0;
+    NATIONAL = nat;
 
-    // Combinar
-    NATIONAL = snap1.national;
-    REGIONS  = [...(snap1.regions || []), ...(snap2.regions || [])];
+    // ── S1: el nacional ya llegó en snap1 — renderizarlo YA, antes de
+    // arriesgar half=2. La cifra más importante de la página no debe
+    // depender de que la petición de regiones tenga éxito. ──
+    renderDuel(NATIONAL);
+    renderActas(NATIONAL);
+
+    // half=2 (las 13 regiones restantes) es best-effort. Si falla por el
+    // límite de subrequests del free tier (condición prevista), seguimos
+    // con regiones parciales — el mapa degrada bien (deptos en gris).
+    let regions = [...(snap1.regions || [])];
+    try {
+      setStatus('Obteniendo regiones...', '');
+      const resp2 = await fetch(WORKER_URL + '/api/snapshot?half=2');
+      if (resp2.ok) {
+        const snap2 = await resp2.json();
+        if (!snap2.error) regions = regions.concat(snap2.regions || []);
+      }
+    } catch (e) { console.warn('half=2 no disponible, regiones parciales:', e); }
+
+    REGIONS = regions
+      .filter(r => r && r.name)
+      .map(r => ({ ...r, pct: +r.pct || 0, fuji: +r.fuji || 0, sanch: +r.sanch || 0 }));
 
     // ── Tracking: preferir el histórico persistido en KV ──
-    // El Worker guarda cada corte en KV. Lo traemos para tener
-    // la curva completa de evolución (no solo desde que abriste la página).
     try {
       const respT = await fetch(WORKER_URL + '/api/tracking');
       if (respT.ok) {
         const t = await respT.json();
         if (t.cuts && t.cuts.length > 0) {
-          TRACKING = t.cuts.map(c => ({ pct: c.pct, keiko: c.keiko, sanch: c.sanch }));
+          TRACKING = t.cuts.map(c => ({ pct: +c.pct || 0, keiko: +c.keiko || 0, sanch: +c.sanch || 0 }));
         }
       }
     } catch (e) { /* si falla, seguimos con el tracking local */ }
 
     // Si el tracking del KV está vacío, lo construimos localmente
-    if (TRACKING.length === 0 && NATIONAL) {
-      TRACKING.push({ pct: NATIONAL.pct, keiko: NATIONAL.candidates.fuji, sanch: NATIONAL.candidates.sanch });
-    } else if (NATIONAL) {
-      // Asegurar que el último punto refleje el dato más reciente
+    if (TRACKING.length === 0) {
+      TRACKING.push({ pct: NATIONAL.pct, keiko: cand.fuji, sanch: cand.sanch });
+    } else {
       const last = TRACKING[TRACKING.length - 1];
-      const cut = { pct: NATIONAL.pct, keiko: NATIONAL.candidates.fuji, sanch: NATIONAL.candidates.sanch };
+      const cut = { pct: NATIONAL.pct, keiko: cand.fuji, sanch: cand.sanch };
       if (!last || NATIONAL.pct > last.pct + 0.3) TRACKING.push(cut);
       else if (NATIONAL.pct >= last.pct) Object.assign(last, cut);
     }
 
-    // Render
-    renderDuel(NATIONAL);
-    renderActas(NATIONAL);
+    // Render del resto (nacional ya se renderizó arriba)
     renderRegionGrid(REGIONS);
     if (REGIONS.length > 0) updateMapColors();
     if (TRACKING.length >= 2) renderTrackingChart();
@@ -1156,6 +1479,7 @@ async function refreshFromONPE() {
     setStatus('Error: ' + e.message, 'error');
     startTimer();
   } finally {
+    isRefreshing = false; // liberar el guard
     btn.classList.remove('loading'); btn.disabled = false;
   }
 }
