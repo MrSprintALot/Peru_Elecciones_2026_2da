@@ -352,6 +352,12 @@
     }
     .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .map-legend i { width: 10px; height: 10px; border-radius: 1px; }
+    .ausent-legend { align-items: center; gap: 10px; }
+    .ausent-bar {
+      width: 120px; height: 8px; border-radius: 2px;
+      background: linear-gradient(90deg, rgba(167,139,250,0.25), rgba(167,139,250,1));
+    }
+    .ausent-cap { color: var(--tx3); }
 
     /* Chart */
     .chart-container { position: relative; height: clamp(300px, 38vw, 420px); }
@@ -593,8 +599,13 @@
     <div class="panel">
       <div class="kicker">
         <span class="kicker-tick"></span>
-        <span class="kicker-label">Ganador por departamento</span>
+        <span class="kicker-label" id="peruMapLabel">Ganador por departamento</span>
         <span class="kicker-rule"></span>
+        <span class="kicker-note" id="peruAusentNote" style="display:none"></span>
+      </div>
+      <div class="world-toolbar">
+        <button class="wm-toggle peru-toggle active" data-mode="ganador" onclick="setPeruMode('ganador')">Ganador</button>
+        <button class="wm-toggle peru-toggle" data-mode="ausentismo" onclick="setPeruMode('ausentismo')">Ausentismo</button>
       </div>
       <div class="map-container" id="mapContainer">
         <div class="map-loading" id="mapLoader">
@@ -605,10 +616,16 @@
           Cargando mapa...
         </div>
       </div>
-      <div class="map-legend">
+      <div class="map-legend" id="peruLegendGanador">
         <span><i style="background:var(--c-keiko)"></i> Fujimori</span>
         <span><i style="background:var(--c-sanch)"></i> Sánchez</span>
         <span><i style="background:var(--bg-3);box-shadow:inset 0 0 0 1px var(--line)"></i> Sin datos</span>
+      </div>
+      <div class="map-legend ausent-legend" id="peruLegendAusent" style="display:none">
+        <span id="ausentMin">—</span>
+        <span class="ausent-bar"></span>
+        <span id="ausentMax">—</span>
+        <span class="ausent-cap">ausentismo</span>
       </div>
     </div>
 
@@ -900,6 +917,84 @@ async function initMap() {
   }
 }
 
+/* ── Toggle del mapa de Perú: Ganador / Ausentismo ─────────────
+   Ausentismo = 100 − participacionCiudadana (campo que entrega ONPE
+   en /totales; el Worker lo captura por región y a nivel nacional).
+   hexToRgba() se reutiliza del bloque del mapa mundial (hoisted). */
+let peruMode = 'ganador';                 // 'ganador' | 'ausentismo'
+let ausentRange = { min: NaN, max: NaN };
+const AUSENT_HUE = '#A78BFA';             // violeta — no compite con naranja/verde
+
+function computeAusentRange() {
+  const vals = REGIONS
+    .filter(r => r.pct > 0 && r.participacion > 0)
+    .map(r => 100 - r.participacion);
+  if (vals.length) ausentRange = { min: Math.min(...vals), max: Math.max(...vals) };
+}
+
+function peruFill(r) {
+  if (!r || r.pct === 0) return '#1e2230';
+  if (peruMode === 'ganador') {
+    if (r.fuji > r.sanch) return C_KEIKO + 'cc';
+    if (r.sanch > r.fuji) return C_SANCH + 'cc';
+    return '#555';
+  }
+  if (!r.participacion) return '#1e2230';
+  const a = 100 - r.participacion;
+  const span = (ausentRange.max - ausentRange.min) || 1;
+  const t = Math.max(0, Math.min(1, (a - ausentRange.min) / span));
+  return hexToRgba(AUSENT_HUE, 0.25 + t * 0.75);
+}
+
+function peruTooltip(r, deptName) {
+  if (!r) return deptName || '?';
+  if (peruMode === 'ganador')
+    return `${r.name}: Keiko ${r.fuji.toFixed(1)}% | Sánchez ${r.sanch.toFixed(1)}% | ${r.pct.toFixed(1)}% actas`;
+  if (!r.participacion) return `${r.name}: sin dato de participación`;
+  return `${r.name}: ausentismo ${(100 - r.participacion).toFixed(1)}% · participación ${r.participacion.toFixed(1)}%`;
+}
+
+function paintPeru() {
+  if (!svgEl || !geoData) return;
+  const regionByName = {};
+  REGIONS.forEach(r => { regionByName[r.name] = r; });
+  const sel = d3.select(svgEl).selectAll('path');
+  sel.attr('fill', (f, i) => peruFill(geoMatchMap && geoMatchMap[i] ? regionByName[geoMatchMap[i]] : null));
+  sel.select('title').text((f, i) => {
+    const dept = geoMatchMap ? geoMatchMap[i] : null;
+    return peruTooltip(dept ? regionByName[dept] : null, dept);
+  });
+}
+
+function updateAusentLegend() {
+  const mn = document.getElementById('ausentMin');
+  const mx = document.getElementById('ausentMax');
+  if (mn) mn.textContent = isFinite(ausentRange.min) ? ausentRange.min.toFixed(0) + '%' : '—';
+  if (mx) mx.textContent = isFinite(ausentRange.max) ? ausentRange.max.toFixed(0) + '%' : '—';
+  const note = document.getElementById('peruAusentNote');
+  if (note) {
+    if (NATIONAL && NATIONAL.participacion) {
+      note.textContent = 'Nacional ' + (100 - NATIONAL.participacion).toFixed(1) + '%';
+      note.style.display = (peruMode === 'ausentismo') ? 'inline' : 'none';
+    } else {
+      note.style.display = 'none';
+    }
+  }
+}
+
+function setPeruMode(mode) {
+  peruMode = mode;
+  document.querySelectorAll('.peru-toggle').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  const lbl = document.getElementById('peruMapLabel');
+  if (lbl) lbl.textContent = mode === 'ganador' ? 'Ganador por departamento' : 'Ausentismo por departamento';
+  const lg = document.getElementById('peruLegendGanador');
+  const la = document.getElementById('peruLegendAusent');
+  if (lg) lg.style.display = mode === 'ganador' ? 'flex' : 'none';
+  if (la) la.style.display = mode === 'ausentismo' ? 'flex' : 'none';
+  updateAusentLegend();
+  paintPeru();
+}
+
 function renderMap() {
   const container = document.getElementById('mapContainer');
   if (!container || !geoData) return;
@@ -941,38 +1036,19 @@ function renderMap() {
 
   svg.selectAll('path').data(features).enter().append('path')
     .attr('d', path)
-    .attr('fill', (f, i) => {
-      const dept = geoMatchMap[i];
-      const r = dept ? regionByName[dept] : null;
-      if (!r || r.pct === 0) return '#1e2230';
-      if (r.fuji > r.sanch) return C_KEIKO + 'cc';
-      if (r.sanch > r.fuji) return C_SANCH + 'cc';
-      return '#555';
-    })
+    .attr('fill', (f, i) => peruFill(geoMatchMap[i] ? regionByName[geoMatchMap[i]] : null))
     .attr('stroke', '#0f1117').attr('stroke-width', 0.5)
     .append('title').text((f, i) => {
       const dept = geoMatchMap[i];
-      const r = dept ? regionByName[dept] : null;
-      if (!r) return dept || '?';
-      return `${r.name}: Keiko ${r.fuji.toFixed(1)}% | Sánchez ${r.sanch.toFixed(1)}% | ${r.pct.toFixed(1)}% actas`;
+      return peruTooltip(dept ? regionByName[dept] : null, dept);
     });
 }
 
 function updateMapColors() {
   if (!svgEl || !geoData) return;
-  const features = topojson.feature(geoData, geoData.objects.per).features;
-  const regionByName = {};
-  REGIONS.forEach(r => { regionByName[r.name] = r; });
-
-  d3.select(svgEl).selectAll('path')
-    .attr('fill', (f, i) => {
-      const dept = geoMatchMap ? geoMatchMap[i] : null;
-      const r = dept ? regionByName[dept] : null;
-      if (!r || r.pct === 0) return '#1e2230';
-      if (r.fuji > r.sanch) return C_KEIKO + 'cc';
-      if (r.sanch > r.fuji) return C_SANCH + 'cc';
-      return '#555';
-    });
+  computeAusentRange();
+  updateAusentLegend();
+  paintPeru();
 }
 
 /* ══════════════════════════════════════════════════════════════
