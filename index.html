@@ -1133,6 +1133,75 @@ function renderDesenlace(nat, regions) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   MOTOR DE PROYECCIÓN — modelo PROPIO, no cifras de ONPE.
+   Proyecta el resultado final estimando cómo se resuelven las actas
+   pendientes/observadas. La variable que mueve la banda es la tasa
+   de anulación de votos en actas observadas (anulRate, supuesto).
+   NO usa ausentismo: las actas pendientes solo contienen votos ya
+   emitidos; la variable correcta es VV por acta (vpa).
+══════════════════════════════════════════════════════════════ */
+
+function projectFinal(regions, national, anulRate) {
+  const fujiV  = (national.candidates && national.candidates.fujiVotos)  || 0;
+  const sanchV = (national.candidates && national.candidates.sanchVotos) || 0;
+  const rate   = Math.max(0, Math.min(0.20, anulRate || 0));
+
+  const vpaNacional = national.contabilizadas > 0
+    ? national.votosValidos / national.contabilizadas : 0;
+
+  let addFujiTot = 0, addSanchTot = 0, totalPend = 0, totalNetos = 0;
+  const addByRegion = [];
+
+  (regions || []).forEach(r => {
+    const pend = Math.max(0, (r.totalActas || 0) - (r.contabilizadas || 0));
+    if (pend === 0) return;
+    const vpa = r.contabilizadas > 0 ? r.vv / r.contabilizadas : vpaNacional;
+    const votosNetos = pend * vpa * (1 - rate);     // votos que efectivamente entran
+    const addFuji  = votosNetos * ((r.fuji  || 0) / 100);
+    const addSanch = votosNetos * ((r.sanch || 0) / 100);
+    addFujiTot += addFuji;
+    addSanchTot += addSanch;
+    totalPend += pend;
+    totalNetos += votosNetos;
+    addByRegion.push({
+      name: r.name, pend,
+      poolBruto: pend * vpa,                          // VV en juego sin anular
+      votosNetos, addFuji, addSanch,
+      lean: ((r.fuji || 0) - (r.sanch || 0)) / 100,
+    });
+  });
+  addByRegion.sort((a, b) => b.pend - a.pend);
+
+  const finalFuji  = fujiV + addFujiTot;
+  const finalSanch = sanchV + addSanchTot;
+  const finalVV    = finalFuji + finalSanch;
+  const pctFuji    = finalVV > 0 ? finalFuji / finalVV * 100 : 0;
+  const pctSanch   = finalVV > 0 ? finalSanch / finalVV * 100 : 0;
+  const marginFinal = finalFuji - finalSanch;        // con signo (+ = Fujimori)
+
+  return {
+    anulRate: rate,
+    finalFuji, finalSanch, finalVV, pctFuji, pctSanch, marginFinal,
+    ganador: marginFinal >= 0 ? 'Fujimori' : 'Sánchez',
+    addByRegion, totalPend, totalNetos,
+  };
+}
+
+// Banda de 3 escenarios: anulación 0 / slider / 20%. La incertidumbre ES el mensaje.
+function projectBand(regions, national, sliderRate) {
+  const optimista = projectFinal(regions, national, 0);     // nadie anula → máx. votos
+  const base      = projectFinal(regions, national, sliderRate);
+  const pesimista = projectFinal(regions, national, 0.20);  // anulación alta
+  const margins = [optimista.marginFinal, base.marginFinal, pesimista.marginFinal];
+  return {
+    optimista, base, pesimista,
+    marginMin: Math.min(...margins),
+    marginMax: Math.max(...margins),
+    cruzaCero: Math.min(...margins) < 0 && Math.max(...margins) > 0,
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════
    RENDER: REGION GRID (lista debajo del mapa)
 ══════════════════════════════════════════════════════════════ */
 
