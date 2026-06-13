@@ -243,21 +243,79 @@ reconteo, era insostenible.
 
 ---
 
+## Pestaña Proyección — modelo de actas JEE (junio 2026)
+
+Tercera pestaña ("Proyección", entre "Resultados nacionales" y "Voto en el extranjero").
+Modelo **propio**, no cifras de ONPE — rotulado como estimación independiente. Proyecta el
+resultado final estimando cómo se resolverán las ~1,550 actas pendientes/observadas. Corre
+con los `REGIONS`/`NATIONAL` ya cargados; **no agrega requests** al Worker.
+
+### Método (funciones puras)
+- `projectFinal(regions, national, anulRate)`: por región con pendientes,
+  `votosNetos_r = pend_r × vpa_r × (1 − anulRate)`, repartidos por el `% regional actual`
+  (`addFuji_r`, `addSanch_r`). Suma a los votos reales nacionales → `pctFuji/pctSanch`,
+  `marginFinal` (con signo). Guardas: sin división por cero (`finalVV=0`, `pend=0`);
+  `contabilizadas_r=0` usa `vpaNacional` de fallback.
+- `projectBand(...)`: corre `projectFinal` con anulación 0% (optimista), slider (base),
+  20% (pesimista). La incertidumbre es el mensaje: el resultado se presenta como **banda**,
+  no como punto. `cruzaCero` = un escenario invierte el ganador.
+- `computeSensitivity()`: margen final para cada tasa 0–20%; detecta el **punto de vuelco**
+  (tasa interpolada a la que el margen cruza 0).
+
+### Supuesto clave — tasa de anulación
+Las actas observadas no se cuentan tal cual: el JEE valida, corrige o anula votos. No hay
+tasa oficial publicada → va como **slider** (`min=0 max=20 step=1`, default 8%). Ref. histórica
+rotulada: 1ra vuelta 2026, ~5,000 actas en JEE ≈ ~120 votos netos por acta (las observadas
+rinden menos que el VV promedio). El slider recalcula panel, banda, tabla, gráfico e insights
+en vivo (`onAnulSlider`).
+
+### UI
+- Disclaimer ámbar visible sin scroll: "No son cifras oficiales de ONPE… el JNE proclama;
+  este modelo no declara ganadores".
+- Panel de dos cifras grandes (escenario base) + banda de margen (en ámbar si cruza 0).
+- Tabla por región con pendientes (reusa lenguaje de `region-grid`): actas pendientes,
+  VV est. en juego, tendencia, mini-barra bicolor de aporte neto. Lima resaltada (domina la bolsa).
+- **Gráfico de sensibilidad** (Chart.js line): margen final (votos, con signo) vs % anulación;
+  línea de cero, marcador del punto de vuelco si cruza. Cuidado del canvas oculto: se recrea
+  vía `requestAnimationFrame` cuando la pestaña se hace visible (mismo patrón que el planisferio).
+- **Insights automáticos** calculados en vivo: concentración geográfica, sensibilidad
+  (estable vs invierte), aritmética (`shareReq` de F2) vs geografía, aporte del exterior.
+
+### Decisiones (no reabrir)
+- NO usa ausentismo: las actas pendientes solo contienen votos ya emitidos; la variable
+  correcta es VV por acta (`vpa`).
+- NO titula "ganador proyectado" ni "electo"; siempre banda, nunca punto único.
+- La tasa de anulación es supuesto editable, nunca presentada como dato oficial.
+
+### Verificación
+- Smoke test (Node, funciones extraídas): `marginFinal@0 ≥ marginFinal@20` (más anulación =
+  menos votos netos = margen se encoge); sin NaN con `pend=0`/`contabilizadas=0`/`finalVV=0`;
+  banda calibrada con cruce → `cruzaCero=true`.
+- Live contra el Worker real (12 jun, 98.3%): base 8% → Fujimori 50.11% / Sánchez 49.89%,
+  banda +34,661…+42,197 a favor de Fujimori (no cruza), 25 regiones en tabla, gráfico 21
+  puntos, 3 insights vivos (Lima concentra 62% de las pendientes, +27pp pro-Keiko).
+  Responsive ≤620px: panel y tabla apilan, disclaimer visible sin scroll. Toggles existentes
+  (mapa Perú, planisferio, Carrera/Margen) intactos.
+
+---
+
 ## Estado final
 
 Dashboard funcional de punta a punta: GitHub Pages → Worker → ONPE.
 - Datos en vivo cada 3 min (al momento de esta actualización: ~98.3% de actas contabilizadas,
   margen ~4,290 votos / ~0.02pp, ~1,550 actas en JEE). Ver dashboard live para cifras actuales.
-- 2 pestañas: "Resultados nacionales" y "Voto en el extranjero" (`switchTab`)
+- 3 pestañas: "Resultados nacionales", "Proyección" y "Voto en el extranjero" (`switchTab`)
 - Mapa coroplético por departamento (TopoJSON CDN datamaps, objeto `per`) con toggle Ganador/Ausentismo
 - Panel "La matemática del desenlace": estimador de actas JEE y share requerido para revertir
+- Pestaña "Proyección": modelo propio de actas JEE con slider de anulación, banda, tabla,
+  gráfico de sensibilidad e insights (estimación independiente, no oficial)
 - Planisferio del voto exterior por continente (world-atlas, geoNaturalEarth1) con toggle Ganador/Margen
 - Gráfico de evolución con toggle Carrera/Margen y proyección
 - Lista de 26 regiones
 - Responsive desktop + móvil
 
 **Versión vigente del frontend:** `index.html` del repo `Peru_Elecciones_2026_2da`
-(2 pestañas + mapa Perú con ausentismo + matemática del desenlace + voto exterior).
+(3 pestañas + mapa Perú con ausentismo + matemática del desenlace + proyección + voto exterior).
 
 **CSS durmiente:** el commit `1e54102` agregó estilos de un overlay a pantalla completa
 del planisferio (`.map-overlay`, sin Fullscreen API nativo — lección de iOS Safari aplicada),
