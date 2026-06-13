@@ -48,11 +48,15 @@ Raw vote counts alone provide limited context. This platform was designed to ans
 
 The goal is transparency, data quality, and insight generation using official public data.
 
+This relevance was tested in the most demanding scenario possible: the 2026 runoff was decided by a margin near 0.02 percentage points, with the final outcome resting on roughly 1,550 observed ballots ("actas") still under review by the electoral juries (JEE). In that context, the platform's focus on communicating uncertainty — rather than prematurely declaring a winner — became its core value.
+
 ---
 
 # Dashboard Preview
 
 ![Dashboard Screenshot](docs/dashboard-preview.png)
+
+> _Note: add a screenshot at `docs/dashboard-preview.png` for this preview to render._
 
 ---
 
@@ -82,14 +86,14 @@ The goal is transparency, data quality, and insight generation using official pu
 - API ingestion
 - Automated refresh workflows
 - Data quality controls
-- Snapshot tracking
+- Anti-bot proxy design (Cloudflare Worker)
 - Cache optimization
 - Data normalization
 
 ## Data Visualization
 
 - Interactive dashboards
-- Geographic visualizations
+- Geographic visualizations (D3.js + TopoJSON)
 - Time-series analysis
 - Information hierarchy design
 - Decision-oriented reporting
@@ -111,7 +115,7 @@ Stakeholders need a reliable way to monitor trends, understand regional dynamics
 1. Retrieve official election results from ONPE APIs
 2. Normalize incoming datasets
 3. Validate national and regional consistency
-4. Archive historical snapshots
+4. Track reporting progress over time
 5. Monitor trend evolution
 6. Generate visual insights
 7. Estimate final outcomes based on reporting progress
@@ -126,6 +130,7 @@ Stakeholders need a reliable way to monitor trends, understand regional dynamics
 - Lead stability analysis
 - Historical trend evolution
 - Official data consistency monitoring
+- Outcome sensitivity to pending (JEE) ballots
 
 ---
 
@@ -136,6 +141,7 @@ Stakeholders need a reliable way to monitor trends, understand regional dynamics
 - Better understanding of regional voting behavior
 - Continuous monitoring of official reporting
 - Data-driven election analysis
+- Responsible communication of uncertainty in a tight race
 
 ---
 
@@ -147,19 +153,19 @@ Stakeholders need a reliable way to monitor trends, understand regional dynamics
 Official ONPE APIs
         │
         ▼
-Cloudflare Worker
+Cloudflare Worker  (anti-bot proxy + CORS + KV)
         │
         ▼
-Data Validation Layer
+Data Normalization & Parsing  (by candidate DNI)
         │
         ▼
-Historical Snapshot Engine
+Trend Tracking  (cut-by-cut history in Cloudflare KV)
         │
         ▼
-Forecasting Logic
+Forecasting Logic  (regional-lean projection + sensitivity band)
         │
         ▼
-Interactive Dashboard
+Interactive Dashboard  (vanilla JS · Chart.js · D3.js)
         │
         ▼
 GitHub Pages Deployment
@@ -171,12 +177,12 @@ GitHub Pages Deployment
 
 ### Primary Source
 
-- Official ONPE Election Results API
+- Official ONPE Election Results API (national totals + per-candidate results)
 
 ### Supporting Sources
 
-- Regional election endpoints
-- JEE (Jurado Electoral Especial) reporting data
+- Regional election endpoints (26 departments + overseas vote)
+- JEE (Jurado Electoral Especial) pending-ballot figures
 
 ---
 
@@ -192,33 +198,39 @@ The platform performs validation checks to identify:
 
 Real-world datasets are rarely perfect. Detecting anomalies is often as important as visualizing the data itself.
 
+A notable engineering challenge was ONPE's anti-bot protection: requests not resembling a real browser received an Angular shell instead of JSON. The Cloudflare Worker was tuned (header set, no `Origin`/`X-Requested-With`, realistic `sec-fetch-*`) to reliably retrieve official data.
+
 ---
 
-## Historical Tracking
+## Trend Tracking
 
-Election data is periodically archived to create a historical timeline of reporting progress.
+Each reporting "cut" is recorded to Cloudflare KV, building a timeline of how the count evolved (percentage processed and each candidate's share over time).
 
 This enables:
 
 - Trend analysis
 - Vote evolution monitoring
-- Forecasting
-- Post-election analysis
+- Lead-change detection
+- Forecasting inputs
+
+> _Full per-region snapshot archiving is on the roadmap (see Future Improvements)._
 
 ---
 
 ## Forecast Methodology
 
-The forecasting component evaluates:
+The forecasting component estimates the likely final result from the ballots still pending (mostly observed ballots under JEE review). It evaluates:
 
-- Current vote distribution
-- Reporting progress by region
-- Historical evolution patterns
-- Remaining uncounted votes
+- Each region's **current vote distribution** (the pending ballots are projected using the lean of their own region)
+- **Reporting progress by region** (how many ballots remain where)
+- **Valid votes per acta** (to estimate how many votes each pending ballot contributes)
+- An **adjustable annulment rate** for observed ballots, since the JEE can validate, correct, or annul votes
 
-The objective is not to predict voter behavior.
+The output is a **band, not a single point**: optimistic / base / pessimistic scenarios, plus a **sensitivity chart** showing at which annulment rate the result would flip. A complementary metric reports the share of pending ballots the trailing candidate would need to overturn the lead.
 
-The objective is to estimate likely final outcomes based on official results already reported.
+The objective is not to predict voter behavior. It is to estimate likely final outcomes — with explicit uncertainty — based on official results already reported.
+
+> The model does not declare a winner. Under Peruvian law, only the JNE (National Jury of Elections) proclaims the official result.
 
 ---
 
@@ -228,17 +240,17 @@ The objective is to estimate likely final outcomes based on official results alr
 
 - HTML5
 - CSS3
-- JavaScript
+- JavaScript (vanilla, no frameworks)
 
 ### Visualization
 
-- Chart.js
-- SVG Maps
+- Chart.js (time-series, sensitivity charts)
+- D3.js + TopoJSON (choropleth map of Peru, world map for overseas vote)
 
 ### Data Layer
 
 - ONPE APIs
-- Cloudflare Workers
+- Cloudflare Workers + KV
 
 ### Deployment
 
@@ -253,7 +265,7 @@ The objective is to estimate likely final outcomes based on official results alr
 
 # AI-Assisted Development
 
-This project was developed using a modern AI-assisted workflow with **Claude Code (Opus 4.8)**.
+This project was developed using a modern AI-assisted workflow with **Claude Code (Claude Fable 5)**.
 
 AI accelerated implementation and iteration speed, while project direction, analytical logic, validation requirements, testing, and final decision-making remained human-driven.
 
@@ -283,33 +295,21 @@ This reflects the increasingly common Human + AI workflow used in modern softwar
 
 # Challenges Solved
 
+## Anti-Bot Data Access
+
+ONPE's results sit behind anti-bot protection that returned an HTML shell instead of JSON. A Cloudflare Worker was configured to replicate a real browser's request signature, restoring reliable access to official data.
+
 ## Data Consistency
 
-Official national and regional datasets occasionally reported discrepancies.
-
-A validation layer was implemented to identify, track, and surface potential inconsistencies.
-
----
+Official national and regional datasets occasionally reported discrepancies. The platform surfaces these so they can be tracked rather than hidden.
 
 ## Near Real-Time Updates
 
-The dashboard refreshes automatically while balancing responsiveness and API utilization.
-
----
-
-## Historical Persistence
-
-Official election APIs focus on current results.
-
-A snapshot system was implemented to preserve historical states for trend analysis and forecasting.
-
----
+The dashboard refreshes automatically while balancing responsiveness and API utilization, staying within Cloudflare's free-tier subrequest limits via a split-fetch pattern.
 
 ## Information Density
 
-Election data contains thousands of records and multiple aggregation levels.
-
-The dashboard was designed to surface the most important insights without overwhelming users.
+Election data contains thousands of records across multiple aggregation levels. The dashboard surfaces the most important insights without overwhelming users, organized into focused tabs (national results, overseas vote, projection).
 
 ---
 
@@ -329,12 +329,12 @@ This project reinforced several real-world analytics skills:
 
 # Future Improvements
 
-- More advanced forecasting models
-- Department-level drilldowns
+- Full per-region snapshot archiving (object storage) for post-election audit
+- Country-level drilldown for the overseas vote
+- National vs regional consistency verifier
 - Historical election comparisons
-- Additional anomaly detection rules
+- Additional anomaly detection rules (e.g., Benford's Law)
 - Exportable reports
-- Mobile-first optimizations
 
 ---
 
@@ -359,7 +359,7 @@ Business Analyst | Data Analyst | BI Analyst
 
 ### Links
 
-- LinkedIn: https://linkedin.com/in/TU-LINKEDIN
+- LinkedIn: https://linkedin.com/in/rafaelvasquezba/
 - GitHub: https://github.com/MrSprintALot
 
 ---
