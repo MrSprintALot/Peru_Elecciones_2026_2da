@@ -1086,6 +1086,7 @@ const REFRESH_INTERVAL_MS = 3 * 60 * 1000; // 3 minutos
 // Colores por candidato
 const C_KEIKO = '#E8943A';
 const C_SANCH = '#2ECDA7';
+const C_AMBER = '#D9A441';   // = --c-amber (banda/supuestos del modelo de proyección)
 
 /* ══════════════════════════════════════════════════════════════
    ESTADO GLOBAL
@@ -1533,6 +1534,159 @@ function onAnulSlider(val) {
   proyAnulRate = (+val) / 100;
   document.getElementById('proySliderVal').textContent = val + '%';
   renderProjection();
+}
+
+/* ── Sensibilidad: margen final para cada tasa de anulación 0–20%.
+   El punto de vuelco (si existe) es la tasa a la que el margen cruza 0
+   — a partir de ahí cambia el ganador. Es el insight central. ── */
+function computeSensitivity() {
+  const rates = [], margins = [];
+  for (let p = 0; p <= 20; p++) {
+    rates.push(p);
+    margins.push(projectFinal(REGIONS, NATIONAL, p / 100).marginFinal);
+  }
+  let vuelco = null;   // en % de anulación (interpolado), o null si no cruza
+  for (let i = 1; i < margins.length; i++) {
+    if (margins[i] === 0) { vuelco = i; break; }
+    if (Math.sign(margins[i]) !== Math.sign(margins[i - 1])) {
+      const t = margins[i - 1] / (margins[i - 1] - margins[i]); // 0..1 dentro del paso
+      vuelco = (i - 1) + t; break;
+    }
+  }
+  return { rates, margins, vuelco };
+}
+
+function renderProySens() {
+  const ctx = document.getElementById('proySensChart');
+  if (!ctx || !NATIONAL || !REGIONS || REGIONS.length === 0) return;
+  // Canvas oculto (ancho 0): no crear el chart aquí — se redibuja vía rAF
+  // cuando la pestaña se hace visible (mismo cuidado que renderWorldMap).
+  const cont = ctx.parentElement;
+  if (!cont || cont.offsetWidth === 0) return;
+  if (proySensChart) { proySensChart.destroy(); proySensChart = null; }
+
+  const { margins, vuelco } = computeSensitivity();
+  const data = margins.map((m, i) => ({ x: i, y: m }));
+
+  const datasets = [{
+    label: 'Margen final (votos)',
+    data,
+    borderWidth: 2.5, tension: 0.25,
+    segment: { borderColor: s => (s.p1.parsed.y >= 0 ? C_KEIKO : C_SANCH) },
+    borderColor: C_KEIKO,
+    pointRadius: 2.5,
+    pointBackgroundColor: margins.map(m => m >= 0 ? C_KEIKO : C_SANCH),
+  }];
+  // Marcador del punto de vuelco (cruce con 0)
+  if (vuelco !== null) {
+    datasets.push({
+      label: 'Punto de vuelco',
+      data: [{ x: vuelco, y: 0 }],
+      borderColor: C_AMBER, backgroundColor: C_AMBER,
+      pointRadius: 6, pointHoverRadius: 8, pointStyle: 'rectRot',
+      showLine: false,
+    });
+  }
+
+  const maxAbs = Math.max(...margins.map(Math.abs), 1000);
+  proySensChart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 500 },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e2230', titleColor: '#e8eaed', bodyColor: '#9aa0ab',
+          borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, padding: 10,
+          callbacks: {
+            title: items => {
+              const it = items[0];
+              if (it.dataset.label === 'Punto de vuelco')
+                return 'Vuelco ≈ ' + it.parsed.x.toFixed(1) + '% anulación';
+              return it.parsed.x.toFixed(0) + '% anulación';
+            },
+            label: item => {
+              if (item.dataset.label === 'Punto de vuelco') return ' aquí cambia el ganador';
+              const m = item.parsed.y;
+              const lead = m >= 0 ? 'Fujimori' : 'Sánchez';
+              return ` ${lead} +${fmt(Math.round(Math.abs(m)))} votos`;
+            },
+          }
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear', min: 0, max: 20,
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, stepSize: 5, callback: v => v + '%' },
+          title: { display: true, text: '% de votos anulados en observadas', color: '#5f6673', font: { size: 10 } },
+        },
+        y: {
+          min: -maxAbs * 1.15, max: maxAbs * 1.15,
+          grid: { color: c => c.tick.value === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,.04)' },
+          ticks: {
+            color: '#5f6673', font: { family: '"DM Mono"', size: 10 },
+            callback: v => (v > 0 ? '+' : '') + (Math.abs(v) >= 1000 ? (v / 1000).toFixed(0) + 'k' : v),
+          },
+          title: { display: true, text: 'margen final (votos, + = Fujimori)', color: '#5f6673', font: { size: 10 } },
+        },
+      }
+    }
+  });
+}
+
+/* ── Insights automáticos: texto calculado en vivo, no hardcodeado. ── */
+function renderProyInsights(band) {
+  const el = document.getElementById('proyInsights');
+  if (!el || !band) return;
+  const base = band.base;
+  const items = [];
+
+  // 1. Concentración geográfica de las pendientes
+  const regs = base.addByRegion;       // ya ordenadas desc por pend
+  const totalPend = base.totalPend || 0;
+  if (regs.length && totalPend > 0) {
+    const top = regs[0];
+    const sharePct = (top.pend / totalPend * 100).toFixed(0);
+    const leadTxt = top.lean > 0 ? `pro-Keiko (+${(top.lean * 100).toFixed(1)}pp)`
+      : top.lean < 0 ? `pro-Sánchez (+${(Math.abs(top.lean) * 100).toFixed(1)}pp)` : 'en empate';
+    items.push(`<b>Concentración:</b> el <b>${sharePct}%</b> de las actas pendientes está en <b>${top.name}</b>, hoy ${leadTxt}.`);
+  }
+
+  // 2. Sensibilidad al supuesto de anulación
+  const { vuelco } = computeSensitivity();
+  if (!band.cruzaCero || vuelco === null) {
+    items.push(`<b>Sensibilidad:</b> el resultado se mantiene a favor de <b>${base.ganador}</b> en los tres escenarios de anulación (0–20%).`);
+  } else {
+    items.push(`<b>Sensibilidad:</b> el ganador depende del supuesto — con anulación <b>≥ ${vuelco.toFixed(1)}%</b> el resultado se invierte.`);
+  }
+
+  // 3. Geografía vs aritmética (usa shareReq de computeDesenlace, F2)
+  const d = computeDesenlace(NATIONAL, REGIONS);
+  if (d && d.shareReq !== null && regs.length) {
+    const segundo = d.M >= 0 ? 'Sánchez' : 'Fujimori';
+    const liderGeo = d.M >= 0 ? 'Keiko' : 'Sánchez';
+    const top = regs[0];
+    const topShare = (top.pend / totalPend * 100).toFixed(0);
+    // ¿La región dominante empuja a favor o en contra del 2.º?
+    const topFavoreceLider = (d.M >= 0 && top.lean > 0) || (d.M < 0 && top.lean < 0);
+    const geoTxt = topFavoreceLider
+      ? `pero como el ${topShare}% está en <b>${top.name}</b> (pro-${liderGeo}), la geografía juega en contra.`
+      : `y la geografía de las pendientes (${top.name}, ${topShare}%) podría ayudar.`;
+    items.push(`<b>Aritmética vs geografía:</b> ${segundo} necesitaría <b>${(d.shareReq * 100).toFixed(1)}%</b> de los pendientes para empatar; ${geoTxt}`);
+  }
+
+  // 4. Exterior (suele aportar pro-Keiko)
+  const ext = regs.find(r => r.name === 'Extranjero');
+  if (ext) {
+    const lead = ext.lean > 0 ? 'Keiko' : ext.lean < 0 ? 'Sánchez' : 'empate';
+    items.push(`<b>Exterior:</b> ${fmt(ext.pend)} actas pendientes, hoy a favor de <b>${lead}</b> (+${(Math.abs(ext.lean) * 100).toFixed(1)}pp).`);
+  }
+
+  el.innerHTML = items.map(t => `<li>${t}</li>`).join('');
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2161,11 +2315,8 @@ function switchTab(tab) {
   if (tab === 'proyeccion') {
     renderProjection();
     // El canvas del gráfico de sensibilidad estaba oculto (ancho 0):
-    // re-renderizar al tamaño real una vez visible.
-    requestAnimationFrame(() => {
-      if (proySensChart) proySensChart.resize();
-      else if (typeof renderProySens === 'function') renderProySens();
-    });
+    // recrearlo al tamaño real una vez que la pestaña es visible.
+    requestAnimationFrame(() => renderProySens());
   }
 
   window.scrollTo({ top: 0, behavior: 'instant' });
