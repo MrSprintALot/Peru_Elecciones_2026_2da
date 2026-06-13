@@ -867,11 +867,20 @@ function renderDuel(nat) {
   document.getElementById('pctKeiko').textContent = keiko.toFixed(2);
   document.getElementById('pctSanch').textContent = sanch.toFixed(2);
 
-  // Votos estimados
-  const votosKeiko = Math.round(vv * keiko / 100);
-  const votosSanch = Math.round(vv * sanch / 100);
-  document.getElementById('votosKeiko').textContent = '~' + fmt(votosKeiko) + ' votos';
-  document.getElementById('votosSanch').textContent = '~' + fmt(votosSanch) + ' votos';
+  // Votos reales del Worker. Con ~18M de VV, derivar de porcentajes a 3
+  // decimales mete un error de ±300 votos — mayor que el margen real.
+  // Fallback al cálculo derivado SOLO si vienen en 0 con vv > 0 (KV viejo).
+  let votosKeiko = nat.candidates.fujiVotos || 0;
+  let votosSanch = nat.candidates.sanchVotos || 0;
+  let votosReales = true;
+  if (votosKeiko === 0 && votosSanch === 0 && vv > 0) {
+    votosKeiko = Math.round(vv * keiko / 100);
+    votosSanch = Math.round(vv * sanch / 100);
+    votosReales = false;
+  }
+  const aprox = votosReales ? '' : '~';
+  document.getElementById('votosKeiko').textContent = aprox + fmt(votosKeiko) + ' votos';
+  document.getElementById('votosSanch').textContent = aprox + fmt(votosSanch) + ' votos';
 
   // Margen
   const gapPct  = Math.abs(keiko - sanch);
@@ -881,7 +890,7 @@ function renderDuel(nat) {
 
   const margenEl = document.getElementById('margenValor');
   margenEl.style.color = colorLider;
-  margenEl.textContent = '+' + gapPct.toFixed(2) + 'pp · ~' + fmt(gapVotos) + ' votos';
+  margenEl.textContent = '+' + gapPct.toFixed(2) + 'pp · ' + aprox + fmt(gapVotos) + ' votos';
 
   document.getElementById('margenSub').textContent =
     `${lider} va adelante · con ${nat.pct.toFixed(2)}% de actas`;
