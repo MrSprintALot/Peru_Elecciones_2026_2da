@@ -278,6 +278,43 @@
       border: 1px solid var(--c-sanch-line); color: var(--c-sanch);
     }
 
+    /* ══════════════ 7b. DESENLACE — ¿puede voltearse? ══════════════ */
+    .desenlace-section {
+      border-top: 1px solid var(--line-strong);
+      padding: 24px 0;
+    }
+    .desenlace-note {
+      font-size: 12px; color: var(--tx3); max-width: 78ch;
+      margin: -6px 0 16px;
+    }
+    .desenlace-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+      border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .desenlace-kpi {
+      padding: 13px 16px; border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .desenlace-kpi:last-child { border-right: 0; }
+    .desenlace-kpi .dk-k {
+      font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--tx3);
+    }
+    .desenlace-kpi strong {
+      font-family: var(--mono); font-weight: 500; font-size: 15px;
+      color: var(--tx1); font-variant-numeric: tabular-nums;
+    }
+    .desenlace-kpi .dk-sub { font-size: 11px; color: var(--tx2); }
+    .desenlace-kpi.dk-star strong {
+      font-size: clamp(20px, 2.6vw, 27px); line-height: 1.05; letter-spacing: -0.02em;
+    }
+    .desenlace-base {
+      margin-top: 14px; font-family: var(--mono); font-size: 12px;
+      color: var(--tx2); letter-spacing: 0.01em;
+    }
+    .desenlace-regiones { margin-top: 16px; }
+
     /* ══════════════ 8. ACTAS STRIP ══════════════ */
     .actas-strip {
       border-top: 1px solid var(--line-strong);
@@ -480,6 +517,9 @@
       .actas-mini-grid { grid-template-columns: repeat(2, 1fr); }
       .actas-mini:nth-child(2) { border-right: 0; }
       .actas-mini:nth-child(1), .actas-mini:nth-child(2) { border-bottom: 1px solid var(--line); }
+      .desenlace-grid { grid-template-columns: repeat(2, 1fr); }
+      .desenlace-kpi:nth-child(2) { border-right: 0; }
+      .desenlace-kpi:nth-child(1), .desenlace-kpi:nth-child(2) { border-bottom: 1px solid var(--line); }
     }
     @media (max-width: 620px) {
       .container { padding: 0 16px; }
@@ -504,6 +544,10 @@
       .cand-name { font-size: 18px; white-space: normal; }
       .cand-votes { font-size: 12px; }
       .region-grid { grid-template-columns: 1fr; }
+      /* Panel desenlace: apilar los 4 KPIs en columna (patrón .duel-grid) */
+      .desenlace-grid { grid-template-columns: 1fr; }
+      .desenlace-kpi { border-right: 0; border-bottom: 1px solid var(--line); }
+      .desenlace-kpi:last-child { border-bottom: 0; }
     }
 
     /* ══════════════ 13. REDUCED MOTION ══════════════ */
@@ -629,6 +673,41 @@
 
     <!-- Banner resultado definitivo (aparece cerca del 99%) -->
     <div class="resultado-banner" id="resultadoBanner"></div>
+  </section>
+
+  <!-- ══════════════ DESENLACE — ¿PUEDE VOLTEARSE? ══════════════ -->
+  <section class="desenlace-section" id="desenlaceSection" style="display:none">
+    <div class="kicker">
+      <span class="kicker-tick"></span>
+      <span class="kicker-label">La matemática del desenlace</span>
+      <span class="kicker-rule"></span>
+      <span class="kicker-note">¿Puede voltearse?</span>
+    </div>
+    <p class="desenlace-note">Estimación propia sobre datos ONPE. La bolsa de votos es cota superior: las actas observadas pueden terminar con votos anulados.</p>
+    <div class="desenlace-grid">
+      <div class="desenlace-kpi">
+        <span class="dk-k">Actas pendientes</span>
+        <strong id="dkPend">—</strong>
+        <span class="dk-sub" id="dkPendSub"></span>
+      </div>
+      <div class="desenlace-kpi">
+        <span class="dk-k">Votos válidos máx. en juego</span>
+        <strong id="dkPool">—</strong>
+        <span class="dk-sub">cota superior de la bolsa</span>
+      </div>
+      <div class="desenlace-kpi">
+        <span class="dk-k">Margen actual</span>
+        <strong id="dkMargen">—</strong>
+        <span class="dk-sub" id="dkMargenSub"></span>
+      </div>
+      <div class="desenlace-kpi dk-star">
+        <span class="dk-k">Para revertir</span>
+        <strong id="dkShare">—</strong>
+        <span class="dk-sub" id="dkShareSub"></span>
+      </div>
+    </div>
+    <div class="desenlace-base" id="dkBase"></div>
+    <div class="region-grid desenlace-regiones" id="dkRegiones"></div>
   </section>
 
   <!-- ══════════════ ACTAS STRIP ══════════════ -->
@@ -929,6 +1008,102 @@ function renderActas(nat) {
     document.getElementById('jeeVotos').textContent = '~' + fmt(Math.round(nat.enviadasJee * avgVV));
     document.getElementById('jeeBadge').style.display = '';
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DESENLACE — ¿puede voltearse?
+   Estimador puro sobre datos ya presentes en NATIONAL y REGIONS.
+   La bolsa (pool) es cota superior: las actas observadas pueden
+   terminar con votos anulados por el JEE.
+══════════════════════════════════════════════════════════════ */
+
+function computeDesenlace(national, regions) {
+  const fujiV  = (national.candidates && national.candidates.fujiVotos)  || 0;
+  const sanchV = (national.candidates && national.candidates.sanchVotos) || 0;
+  const M = fujiV - sanchV;                      // margen con signo (+ = Fujimori)
+
+  const vpaNacional = national.contabilizadas > 0
+    ? national.votosValidos / national.contabilizadas : 0;
+
+  let pool = 0;      // Σ votos válidos máximos en juego
+  let deltaBase = 0; // Σ pool_r × lean_r (pendientes votan como su región)
+  const porRegion = [];
+
+  (regions || []).forEach(r => {
+    const pend = Math.max(0, (r.totalActas || 0) - (r.contabilizadas || 0));
+    if (pend === 0) return;
+    const vpa  = r.contabilizadas > 0 ? r.vv / r.contabilizadas : vpaNacional;
+    const poolR = pend * vpa;
+    const lean  = ((r.fuji || 0) - (r.sanch || 0)) / 100;
+    pool += poolR;
+    deltaBase += poolR * lean;
+    porRegion.push({ name: r.name, pend, pool: poolR, lean });
+  });
+  porRegion.sort((a, b) => b.pool - a.pool);
+
+  const mBase = M + deltaBase;
+  const irreversible = Math.abs(M) > pool;
+  // Share de los pendientes que necesita el 2.º para empatar; > 1 ≡ irreversible
+  let shareReq = pool > 0 ? 0.5 + Math.abs(M) / (2 * pool) : null;
+  if (shareReq !== null) shareReq = Math.min(1, shareReq);
+
+  return {
+    M, pool, mBase, shareReq, irreversible,
+    pendientes: Math.max(0, (national.totalActas || 0) - (national.contabilizadas || 0)),
+    enviadasJee: national.enviadasJee || 0,
+    regiones: porRegion,
+  };
+}
+
+function renderDesenlace(nat, regions) {
+  const sec = document.getElementById('desenlaceSection');
+  if (!sec || !nat || !regions || regions.length === 0) return;
+  const d = computeDesenlace(nat, regions);
+  sec.style.display = '';
+
+  const liderNombre   = d.M >= 0 ? 'Fujimori' : 'Sánchez';
+  const segundoNombre = d.M >= 0 ? 'Sánchez' : 'Fujimori';
+  const colorLider    = d.M >= 0 ? C_KEIKO : C_SANCH;
+
+  document.getElementById('dkPend').textContent = fmt(d.pendientes);
+  document.getElementById('dkPendSub').textContent =
+    `(de las cuales ${fmt(d.enviadasJee)} enviadas a JEE)`;
+
+  document.getElementById('dkPool').textContent = fmt(Math.round(d.pool));
+
+  const mEl = document.getElementById('dkMargen');
+  mEl.textContent = fmt(Math.abs(d.M)) + ' votos';
+  mEl.style.color = colorLider;
+  document.getElementById('dkMargenSub').textContent = `a favor de ${liderNombre}`;
+
+  const shareEl = document.getElementById('dkShare');
+  const shareSub = document.getElementById('dkShareSub');
+  if (d.irreversible) {
+    shareEl.textContent = 'Irreversible';
+    shareEl.style.color = colorLider;
+    shareSub.textContent = 'el margen supera la bolsa de votos pendientes';
+  } else if (d.shareReq !== null) {
+    shareEl.textContent = (d.shareReq * 100).toFixed(2) + '%';
+    shareEl.style.color = '';
+    shareSub.textContent =
+      `de los votos pendientes que necesita ${segundoNombre} para revertir`;
+  } else {
+    shareEl.textContent = '—';
+    shareSub.textContent = 'sin votos pendientes';
+  }
+
+  const liderBase = d.mBase >= 0 ? 'Fujimori' : 'Sánchez';
+  document.getElementById('dkBase').textContent =
+    `Escenario base (pendientes votan como su región): ${liderBase} +${fmt(Math.round(Math.abs(d.mBase)))} votos`;
+
+  document.getElementById('dkRegiones').innerHTML = d.regiones.slice(0, 8).map(r => {
+    const color = r.lean > 0 ? C_KEIKO : (r.lean < 0 ? C_SANCH : 'var(--tx3)');
+    return `<div class="rg-item">
+      <div class="rg-dot" style="background:${color}"></div>
+      <div class="rg-name">${r.name}</div>
+      <div class="rg-pct">${fmt(r.pend)} actas · ${fmt(Math.round(r.pool))} en juego</div>
+    </div>`;
+  }).join('');
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1287,6 +1462,7 @@ async function refreshFromONPE() {
     // Render
     renderDuel(NATIONAL);
     renderActas(NATIONAL);
+    renderDesenlace(NATIONAL, REGIONS);
     renderRegionGrid(REGIONS);
     if (REGIONS.length > 0) updateMapColors();
     if (TRACKING.length >= 2) renderTrackingChart();
