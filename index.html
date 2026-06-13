@@ -455,6 +455,127 @@
     }
     /* Quitar el botón Ampliar (ya no hace falta con la pestaña propia) */
     .world-expand { display: none !important; }
+
+    /* ══════════════ PESTAÑA PROYECCIÓN (modelo propio) ══════════════ */
+    .proy-section { padding: 26px 0 10px; }
+    .proy-disclaimer {
+      background: var(--c-amber-bg); border: 1px solid var(--c-amber-line);
+      border-radius: var(--radius); padding: 13px 16px; margin-bottom: 22px;
+      font-size: 13px; color: var(--tx2); line-height: 1.5;
+    }
+    .proy-disclaimer strong { color: var(--c-amber); font-weight: 500; }
+    .proy-waiting {
+      font-family: var(--mono); font-size: 13px; color: var(--tx3);
+      padding: 40px 0; text-align: center;
+    }
+    /* Panel resultado proyectado — dos cifras grandes (reusa lenguaje del hero) */
+    .proy-duel {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(12px, 4vw, 56px);
+      align-items: start; margin-bottom: 22px;
+    }
+    .proy-cand { display: flex; flex-direction: column; min-width: 0; }
+    .proy-cand.right { align-items: flex-end; text-align: right; }
+    .proy-cand .pc-name {
+      font-family: var(--serif); font-weight: 500; font-size: clamp(16px, 1.9vw, 21px);
+      line-height: 1.1; color: var(--tx1); margin-bottom: 4px;
+    }
+    .proy-cand .pc-tag {
+      font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--tx3); margin-bottom: 12px;
+    }
+    .proy-cand .pc-pct {
+      font-family: var(--mono); font-weight: 500;
+      font-size: clamp(2.8rem, 7vw, 4.6rem); line-height: 0.86;
+      letter-spacing: -0.035em; font-variant-numeric: tabular-nums;
+    }
+    .proy-cand .pc-pct::after { content: '%'; font-size: 0.34em; vertical-align: 0.9em; margin-left: 0.06em; color: var(--tx3); }
+    .proy-cand.keiko .pc-pct { color: var(--c-keiko); }
+    .proy-cand.sanch .pc-pct { color: var(--c-sanch); }
+    .proy-cand .pc-votos { font-family: var(--mono); font-size: 12px; color: var(--tx2); margin-top: 10px; }
+    .proy-duel-mid { align-self: center; padding-top: 26px; }
+    .proy-duel-mid .seam { width: 1px; height: 52px; background: var(--line-strong); display: block; margin: 0 auto; }
+    /* Banda de margen final */
+    .proy-band {
+      margin-top: 4px; padding: 16px; border: 1px solid var(--line);
+      border-radius: var(--radius); background: var(--bg-2); text-align: center;
+    }
+    .proy-band.cruza { border-color: var(--c-amber-line); background: var(--c-amber-bg); }
+    .proy-band .pb-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--tx3); margin-bottom: 6px;
+    }
+    .proy-band .pb-valor {
+      font-family: var(--mono); font-weight: 500; font-size: clamp(16px, 2.2vw, 22px);
+      letter-spacing: -0.01em; color: var(--tx1);
+    }
+    .proy-band .pb-warn { margin-top: 8px; font-size: 13px; color: var(--c-amber); font-family: var(--sans); }
+    .proy-base { margin-top: 12px; text-align: center; font-family: var(--mono); font-size: 12.5px; color: var(--tx2); }
+    /* Slider de anulación */
+    .proy-slider-wrap {
+      margin-top: 22px; padding: 16px; border: 1px solid var(--line);
+      border-radius: var(--radius); background: var(--bg-2);
+    }
+    .proy-slider-top {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+      margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .proy-slider-label {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--tx2);
+    }
+    .proy-slider-val { font-family: var(--mono); font-weight: 500; font-size: 18px; color: var(--c-amber); }
+    .proy-slider-wrap input[type=range] {
+      -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+      background: var(--bg-3); border-radius: 999px; outline: none; cursor: pointer;
+    }
+    .proy-slider-wrap input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--c-amber); border: 2px solid var(--bg);
+      cursor: pointer;
+    }
+    .proy-slider-wrap input[type=range]::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%; background: var(--c-amber);
+      border: 2px solid var(--bg); cursor: pointer;
+    }
+    .proy-slider-note { margin-top: 10px; font-size: 11.5px; color: var(--tx3); line-height: 1.5; }
+    /* Tabla regional — reusa region-grid/rg-item, columnas propias */
+    .proy-table { margin-top: 26px; }
+    .proy-row {
+      display: grid; grid-template-columns: 1.3fr 0.9fr 0.9fr 1.1fr 1.1fr; gap: 12px;
+      align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line);
+      min-width: 0;
+    }
+    .proy-row.head {
+      border-bottom: 1px solid var(--line-strong);
+      font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--tx3);
+    }
+    .proy-row.foot {
+      border-top: 1px solid var(--line-strong); border-bottom: 0;
+      font-family: var(--mono); font-size: 12px; color: var(--tx1); margin-top: 2px;
+    }
+    .proy-row.lima { background: rgba(232,148,58,0.05); }
+    .proy-row .pr-name { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--tx1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .proy-row .pr-dot { width: 4px; height: 18px; border-radius: 1px; flex-shrink: 0; }
+    .proy-row .pr-num { font-family: var(--mono); font-size: 12px; color: var(--tx2); font-variant-numeric: tabular-nums; }
+    .proy-row .pr-bar { display: flex; height: 14px; border-radius: 2px; overflow: hidden; background: var(--bg-3); }
+    .proy-row .pr-bar i { height: 100%; display: block; }
+    /* Gráfico de sensibilidad */
+    .proy-sens { margin-top: 28px; }
+    .proy-sens-chart { position: relative; height: clamp(240px, 30vw, 320px); }
+    /* Insights */
+    .proy-insights { margin-top: 22px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); }
+    .proy-insights li { font-size: 13px; color: var(--tx2); line-height: 1.55; margin-left: 18px; margin-bottom: 7px; }
+    .proy-insights li:last-child { margin-bottom: 0; }
+    .proy-insights b { color: var(--tx1); font-weight: 500; }
+    @media (max-width: 620px) {
+      .proy-duel { grid-template-columns: 1fr; gap: 22px; }
+      .proy-duel-mid { display: none; }
+      .proy-cand.right { align-items: flex-start; text-align: left; }
+      .proy-row { grid-template-columns: 1.2fr 0.8fr 1fr; }
+      .proy-row .pr-vvenjuego, .proy-row .pr-tend { display: none; }
+    }
+
     .exterior-section { padding: 30px 0 6px; }
     .exterior-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; }
     .world-toolbar { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -608,6 +729,9 @@
     <button class="tab-btn active" role="tab" aria-selected="true"
       aria-controls="tab-nacional" id="btn-nacional"
       onclick="switchTab('nacional')">Resultados nacionales</button>
+    <button class="tab-btn" role="tab" aria-selected="false"
+      aria-controls="tab-proyeccion" id="btn-proyeccion"
+      onclick="switchTab('proyeccion')">Proyección</button>
     <button class="tab-btn" role="tab" aria-selected="false"
       aria-controls="tab-exterior" id="btn-exterior"
       onclick="switchTab('exterior')">Voto en el extranjero</button>
@@ -831,6 +955,102 @@
   </section>
 
   </div><!-- /tab-pane--exterior -->
+
+  <!-- ══════════════ TAB: PROYECCIÓN (modelo propio) ══════════════ -->
+  <div class="tab-pane tab-pane--proyeccion" id="tab-proyeccion" role="tabpanel" aria-labelledby="btn-proyeccion">
+  <section class="proy-section">
+    <div class="kicker">
+      <span class="kicker-tick"></span>
+      <span class="kicker-label">Modelo de proyección — estimación independiente</span>
+      <span class="kicker-rule"></span>
+      <span class="kicker-note">no oficial</span>
+    </div>
+    <p class="proy-disclaimer">
+      <strong>No son cifras oficiales de ONPE.</strong>
+      Proyecta las <span id="proyNPend">—</span> actas pendientes según el resultado actual
+      de cada región y un supuesto de anulación de votos en actas observadas (editable abajo).
+      El JNE proclama; este modelo no declara ganadores.
+    </p>
+
+    <div class="proy-waiting" id="proyWaiting">Esperando datos de ONPE…</div>
+
+    <div id="proyContent" style="display:none">
+      <!-- Resultado proyectado -->
+      <div class="proy-duel">
+        <div class="proy-cand keiko">
+          <div class="pc-name">Keiko Fujimori</div>
+          <div class="pc-tag">Proyección · escenario base</div>
+          <div class="pc-pct num" id="proyPctK">—</div>
+          <div class="pc-votos" id="proyVotosK">—</div>
+        </div>
+        <div class="proy-duel-mid"><span class="seam"></span></div>
+        <div class="proy-cand sanch right">
+          <div class="pc-name">Roberto Sánchez</div>
+          <div class="pc-tag">Proyección · escenario base</div>
+          <div class="pc-pct num" id="proyPctS">—</div>
+          <div class="pc-votos" id="proyVotosS">—</div>
+        </div>
+      </div>
+
+      <!-- Banda de margen -->
+      <div class="proy-band" id="proyBand">
+        <div class="pb-label">Margen final proyectado (banda de anulación 0–20%)</div>
+        <div class="pb-valor" id="proyBandValor">—</div>
+        <div class="pb-warn" id="proyBandWarn" style="display:none">⚠ El resultado puede cambiar de ganador según el supuesto de anulación</div>
+      </div>
+      <div class="proy-base" id="proyBase">—</div>
+
+      <!-- Slider de anulación -->
+      <div class="proy-slider-wrap">
+        <div class="proy-slider-top">
+          <span class="proy-slider-label">% de votos anulados en actas observadas (supuesto)</span>
+          <span class="proy-slider-val" id="proySliderVal">8%</span>
+        </div>
+        <input type="range" id="proySlider" min="0" max="20" step="1" value="8"
+          oninput="onAnulSlider(this.value)" aria-label="Tasa de anulación supuesta">
+        <p class="proy-slider-note">
+          Ref.: en 1ra vuelta 2026, ~5,000 actas en JEE ≈ ~120 votos netos por acta.
+          Sin tasa oficial de anulación publicada — este valor es un supuesto editable.
+        </p>
+      </div>
+
+      <!-- Tabla por región -->
+      <div class="proy-table">
+        <div class="kicker" style="margin-top:6px">
+          <span class="kicker-tick"></span>
+          <span class="kicker-label">Aporte proyectado por región</span>
+          <span class="kicker-rule"></span>
+          <span class="kicker-note">solo regiones con pendientes</span>
+        </div>
+        <div class="proy-row head">
+          <span>Región</span>
+          <span class="pr-num">Actas pend.</span>
+          <span class="pr-num pr-vvenjuego">VV est. en juego</span>
+          <span class="pr-tend">Tendencia</span>
+          <span>Aporte neto proyectado</span>
+        </div>
+        <div id="proyTableBody"></div>
+        <div class="proy-row foot" id="proyTableFoot"></div>
+      </div>
+
+      <!-- Gráfico de sensibilidad -->
+      <div class="proy-sens">
+        <div class="kicker">
+          <span class="kicker-tick"></span>
+          <span class="kicker-label">Sensibilidad al supuesto de anulación</span>
+          <span class="kicker-rule"></span>
+          <span class="kicker-note">margen final vs % anulación</span>
+        </div>
+        <div class="proy-sens-chart"><canvas id="proySensChart"></canvas></div>
+      </div>
+
+      <!-- Insights automáticos -->
+      <div class="proy-insights">
+        <ul id="proyInsights" style="list-style:disc"></ul>
+      </div>
+    </div>
+  </section>
+  </div><!-- /tab-pane--proyeccion -->
 
   <!-- ══════════════ REGIONES (dentro del tab nacional) ══════════════ -->
   <div class="tab-pane tab-pane--nacional active" id="tab-nacional-bottom" role="presentation">
@@ -1199,6 +1419,120 @@ function projectBand(regions, national, sliderRate) {
     marginMax: Math.max(...margins),
     cruzaCero: Math.min(...margins) < 0 && Math.max(...margins) > 0,
   };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: PESTAÑA PROYECCIÓN
+   Corre con los REGIONS/NATIONAL ya cargados — no dispara fetch.
+══════════════════════════════════════════════════════════════ */
+
+let proyAnulRate = 0.08;   // supuesto base (slider), 8%
+let proySensChart = null;  // Chart.js del gráfico de sensibilidad (Bloque 3)
+
+function renderProjection() {
+  const waiting = document.getElementById('proyWaiting');
+  const content = document.getElementById('proyContent');
+  if (!waiting || !content) return;
+
+  // Sin datos todavía: mantener el mensaje de espera.
+  if (!NATIONAL || !NATIONAL.contabilizadas || !REGIONS || REGIONS.length === 0) {
+    waiting.style.display = '';
+    content.style.display = 'none';
+    return;
+  }
+  waiting.style.display = 'none';
+  content.style.display = '';
+
+  const band = projectBand(REGIONS, NATIONAL, proyAnulRate);
+  const base = band.base;
+
+  // Total de actas pendientes (en el disclaimer)
+  const totalPend = base.totalPend;
+  document.getElementById('proyNPend').textContent = fmt(totalPend);
+
+  // Panel de cifras grandes (escenario base)
+  document.getElementById('proyPctK').textContent = base.pctFuji.toFixed(2);
+  document.getElementById('proyPctS').textContent = base.pctSanch.toFixed(2);
+  document.getElementById('proyVotosK').textContent = fmt(Math.round(base.finalFuji)) + ' votos';
+  document.getElementById('proyVotosS').textContent = fmt(Math.round(base.finalSanch)) + ' votos';
+
+  // Banda de margen final
+  const liderBanda = band.marginMax >= 0 && band.marginMin >= 0 ? 'Fujimori'
+                   : band.marginMax <= 0 && band.marginMin <= 0 ? 'Sánchez' : null;
+  const bandEl = document.getElementById('proyBand');
+  const bandValor = document.getElementById('proyBandValor');
+  const bandWarn = document.getElementById('proyBandWarn');
+  const lo = Math.round(Math.min(Math.abs(band.marginMin), Math.abs(band.marginMax)));
+  const hi = Math.round(Math.max(Math.abs(band.marginMin), Math.abs(band.marginMax)));
+  if (band.cruzaCero) {
+    bandEl.classList.add('cruza');
+    bandWarn.style.display = '';
+    // La banda cruza 0: un escenario da vuelta el resultado.
+    const gFuji  = Math.round(Math.max(band.marginMin, band.marginMax));
+    const gSanch = Math.round(Math.abs(Math.min(band.marginMin, band.marginMax)));
+    bandValor.textContent = `Entre +${fmt(gFuji)} (Fujimori) y +${fmt(gSanch)} (Sánchez)`;
+  } else {
+    bandEl.classList.remove('cruza');
+    bandWarn.style.display = 'none';
+    bandValor.textContent = `Entre +${fmt(lo)} y +${fmt(hi)} votos a favor de ${liderBanda}`;
+  }
+
+  // Línea de contexto del escenario base
+  document.getElementById('proyBase').textContent =
+    `Escenario base (anulación ${Math.round(proyAnulRate * 100)}%): ` +
+    `${base.ganador} +${fmt(Math.round(Math.abs(base.marginFinal)))} votos`;
+
+  renderProyTable(base);
+  if (typeof renderProySens === 'function') renderProySens();
+  if (typeof renderProyInsights === 'function') renderProyInsights(band);
+}
+
+function renderProyTable(base) {
+  const body = document.getElementById('proyTableBody');
+  const foot = document.getElementById('proyTableFoot');
+  if (!body) return;
+
+  let sumFuji = 0, sumSanch = 0, sumPend = 0, sumPool = 0;
+  body.innerHTML = base.addByRegion.map(r => {
+    sumFuji += r.addFuji; sumSanch += r.addSanch; sumPend += r.pend; sumPool += r.poolBruto;
+    const leadKeiko = r.lean > 0;
+    const tendColor = r.lean > 0 ? C_KEIKO : (r.lean < 0 ? C_SANCH : 'var(--tx3)');
+    const tendTxt = r.lean === 0 ? 'empate'
+      : `${leadKeiko ? 'Keiko' : 'Sánchez'} +${(Math.abs(r.lean) * 100).toFixed(1)}pp`;
+    const totAdd = r.addFuji + r.addSanch;
+    const kW = totAdd > 0 ? (r.addFuji / totAdd * 100) : 50;
+    const isLima = r.name === 'Lima';
+    return `<div class="proy-row${isLima ? ' lima' : ''}">
+      <span class="pr-name"><span class="pr-dot" style="background:${tendColor}"></span>${r.name}</span>
+      <span class="pr-num">${fmt(r.pend)}</span>
+      <span class="pr-num pr-vvenjuego">${fmt(Math.round(r.poolBruto))}</span>
+      <span class="pr-tend" style="color:${tendColor};font-family:var(--mono);font-size:11.5px">${tendTxt}</span>
+      <span class="pr-bar" title="Keiko +${fmt(Math.round(r.addFuji))} · Sánchez +${fmt(Math.round(r.addSanch))}">
+        <i style="width:${kW.toFixed(1)}%;background:${C_KEIKO}"></i>
+        <i style="width:${(100 - kW).toFixed(1)}%;background:${C_SANCH}"></i>
+      </span>
+    </div>`;
+  }).join('');
+
+  if (foot) {
+    const totAdd = sumFuji + sumSanch;
+    const kW = totAdd > 0 ? (sumFuji / totAdd * 100) : 50;
+    foot.innerHTML = `
+      <span class="pr-name"><b>Total pendientes</b></span>
+      <span class="pr-num">${fmt(sumPend)}</span>
+      <span class="pr-num pr-vvenjuego">${fmt(Math.round(sumPool))}</span>
+      <span class="pr-tend" style="font-family:var(--mono);font-size:11.5px;color:var(--tx2)">neto →</span>
+      <span class="pr-bar" title="Keiko +${fmt(Math.round(sumFuji))} · Sánchez +${fmt(Math.round(sumSanch))}">
+        <i style="width:${kW.toFixed(1)}%;background:${C_KEIKO}"></i>
+        <i style="width:${(100 - kW).toFixed(1)}%;background:${C_SANCH}"></i>
+      </span>`;
+  }
+}
+
+function onAnulSlider(val) {
+  proyAnulRate = (+val) / 100;
+  document.getElementById('proySliderVal').textContent = val + '%';
+  renderProjection();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1652,6 +1986,8 @@ async function refreshFromONPE() {
     renderRegionGrid(REGIONS);
     if (REGIONS.length > 0) updateMapColors();
     if (TRACKING.length >= 2) renderTrackingChart();
+    // Re-render de la proyección solo si su pestaña está visible (es barato igual).
+    if (document.getElementById('tab-proyeccion').classList.contains('active')) renderProjection();
 
     const hora = new Date().toLocaleTimeString('es-PE');
     setStatus(`✓ Actualizado · ${hora}`, 'ok');
@@ -1807,6 +2143,7 @@ function switchTab(tab) {
   // Paneles
   document.querySelectorAll('.tab-pane--nacional').forEach(p => p.classList.toggle('active', tab === 'nacional'));
   document.getElementById('tab-exterior').classList.toggle('active', tab === 'exterior');
+  document.getElementById('tab-proyeccion').classList.toggle('active', tab === 'proyeccion');
 
   if (tab === 'exterior') {
     if (!exteriorLoaded) {
@@ -1819,6 +2156,16 @@ function switchTab(tab) {
         if (container && container.offsetWidth > 0) renderWorldMap();
       });
     }
+  }
+
+  if (tab === 'proyeccion') {
+    renderProjection();
+    // El canvas del gráfico de sensibilidad estaba oculto (ancho 0):
+    // re-renderizar al tamaño real una vez visible.
+    requestAnimationFrame(() => {
+      if (proySensChart) proySensChart.resize();
+      else if (typeof renderProySens === 'function') renderProySens();
+    });
   }
 
   window.scrollTo({ top: 0, behavior: 'instant' });
