@@ -44,6 +44,7 @@
       /* Core palette — candidatos (no cambiar) */
       --c-keiko: #E8943A;  --c-keiko-bg: rgba(232,148,58,0.13);  --c-keiko-line: rgba(232,148,58,0.40);
       --c-sanch: #2ECDA7;  --c-sanch-bg: rgba(46,205,167,0.13);  --c-sanch-line: rgba(46,205,167,0.40);
+      --c-amber: #D9A441;  --c-amber-bg: rgba(217,164,65,0.10);  --c-amber-line: rgba(217,164,65,0.35);
 
       --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
       --sans:  'DM Sans', system-ui, sans-serif;
@@ -276,6 +277,10 @@
     .resultado-banner.ganador-sanch {
       display: block; background: var(--c-sanch-bg);
       border: 1px solid var(--c-sanch-line); color: var(--c-sanch);
+    }
+    .resultado-banner.pendiente {
+      display: block; background: var(--c-amber-bg);
+      border: 1px solid var(--c-amber-line); color: var(--c-amber);
     }
 
     /* ══════════════ 7b. DESENLACE — ¿puede voltearse? ══════════════ */
@@ -974,15 +979,32 @@ function renderDuel(nat) {
   document.getElementById('margenSub').textContent =
     `${lider} va adelante · con ${nat.pct.toFixed(2)}% de actas`;
 
-  // Banner de resultado definitivo (al llegar al 99%)
+  // Banner de resultado: irreversibilidad real (margen vs bolsa pendiente),
+  // no umbral de % de actas. ONPE cuenta; el JNE proclama — nunca "electa/o".
   const banner = document.getElementById('resultadoBanner');
-  if (nat.pct >= 99) {
-    banner.textContent = keiko > sanch
-      ? `✅ KEIKO FUJIMORI — Presidenta electa (${keiko.toFixed(2)}% vs ${sanch.toFixed(2)}%)`
-      : `✅ ROBERTO SÁNCHEZ — Presidente electo (${sanch.toFixed(2)}% vs ${keiko.toFixed(2)}%)`;
-    banner.className = 'resultado-banner ' + (keiko > sanch ? 'ganador-keiko' : 'ganador-sanch');
-  } else {
+  const d = (REGIONS && REGIONS.length) ? computeDesenlace(nat, REGIONS) : null;
+  if (!d) {
     banner.className = 'resultado-banner';
+  } else if (d.irreversible) {
+    const liderNombre = d.M >= 0 ? 'Keiko Fujimori' : 'Roberto Sánchez';
+    banner.textContent =
+      `${liderNombre} — Ventaja matemáticamente irreversible (${fmt(Math.abs(d.M))} votos de margen; ` +
+      `${fmt(Math.round(d.pool))} votos pendientes como máximo). La proclamación oficial corresponde al JNE.`;
+    banner.className = 'resultado-banner ' + (d.M >= 0 ? 'ganador-keiko' : 'ganador-sanch');
+  } else if (d.pendientes > 0) {
+    const segundoNombre = d.M >= 0 ? 'Sánchez' : 'Fujimori';
+    const share = d.shareReq !== null ? (d.shareReq * 100).toFixed(2) + '%' : '—';
+    banner.textContent =
+      `Resultado no definido — ${fmt(d.pendientes)} actas pendientes (~${fmt(Math.round(d.pool))} votos). ` +
+      `${segundoNombre} necesita ${share} de los votos pendientes para revertir.`;
+    banner.className = 'resultado-banner pendiente';
+  } else {
+    const pctLider = Math.max(keiko, sanch).toFixed(2);
+    const pctSegundo = Math.min(keiko, sanch).toFixed(2);
+    banner.textContent =
+      `Conteo ONPE al 100% — ${lider} ${pctLider}% vs ${pctSegundo}%. ` +
+      `Resultado oficial sujeto a proclamación del JNE.`;
+    banner.className = 'resultado-banner ' + (keiko > sanch ? 'ganador-keiko' : 'ganador-sanch');
   }
 }
 
