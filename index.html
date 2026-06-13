@@ -717,6 +717,7 @@
   <!-- ══════════════ META RAIL ══════════════ -->
   <div class="meta-rail">
     <span class="badge live">ONPE en vivo · cada <strong>3 min</strong></span>
+    <span class="badge" id="actasBadge"><strong id="metaActasPct">—</strong>% contabilizado</span>
     <span class="badge" id="jeeBadge" style="display:none">
       JEE: <strong id="jeeActas">—</strong> actas · <strong id="jeeVotos">—</strong> votos
     </span>
@@ -1247,6 +1248,7 @@ function renderActas(nat) {
   document.getElementById('actasContab').textContent = fmt(nat.contabilizadas);
   document.getElementById('actasJee').textContent = fmt(nat.enviadasJee);
   document.getElementById('actasUpdate').textContent = fmtHora(nat.fechaActualizacion);
+  document.getElementById('metaActasPct').textContent = nat.pct.toFixed(2);
 
   // JEE badge
   if (nat.enviadasJee > 0) {
