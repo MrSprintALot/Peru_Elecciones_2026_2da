@@ -385,7 +385,34 @@
       font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap;
     }
 
-    /* ══════════════ VOTO EN EL EXTERIOR ══════════════ */
+    /* ══════════════ TABS NAV ══════════════ */
+    .tab-nav {
+      display: flex; gap: 0; border-bottom: 1px solid var(--line);
+      background: var(--bg-1);
+    }
+    .tab-btn {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--tx3);
+      padding: 13px 22px; background: none; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      cursor: pointer; transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--tx2); }
+    .tab-btn.active { color: var(--tx1); border-bottom-color: var(--tx1); }
+    /* Contenido de pestañas */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    /* Exterior: en pestaña propia el mapa ocupa más ancho */
+    .tab-pane--exterior .exterior-section { padding: 22px 0 16px; }
+    .tab-pane--exterior .exterior-grid { grid-template-columns: 1.5fr 0.8fr; }
+    .tab-pane--exterior .world-map-container { aspect-ratio: 16 / 7; }
+    @media (max-width: 880px) {
+      .tab-pane--exterior .exterior-grid { grid-template-columns: 1fr; }
+      .tab-pane--exterior .world-map-container { aspect-ratio: 16 / 10; }
+    }
+    /* Quitar el botón Ampliar (ya no hace falta con la pestaña propia) */
+    .world-expand { display: none !important; }
     .exterior-section { padding: 30px 0 6px; }
     .exterior-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; }
     .world-toolbar { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -399,6 +426,23 @@
     .wm-toggle.active { color: var(--tx1); border-color: var(--line-strong); background: var(--bg-3); }
     .world-map-container { width: 100%; aspect-ratio: 16 / 10; position: relative; }
     .world-map-container svg { display: block; }
+    .world-expand { margin-left: auto; }
+    /* ── Overlay pantalla completa del planisferio (funciona en iOS/Android/desktop) ── */
+    .map-overlay { position: fixed; inset: 0; z-index: 1000; display: none; flex-direction: column; background: var(--bg-1); }
+    .map-overlay.open { display: flex; }
+    .map-overlay-head { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+    .map-overlay-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--tx2); }
+    .map-overlay-head .world-toolbar { margin: 0; }
+    .map-overlay-close { margin-left: auto; background: var(--bg-2); color: var(--tx1); border: 1px solid var(--line); border-radius: var(--radius); width: 34px; height: 34px; font-size: 15px; line-height: 1; cursor: pointer; }
+    .map-overlay-close:hover { border-color: var(--line-strong); }
+    .map-overlay-body { flex: 1; min-height: 0; position: relative; }
+    .map-overlay-body svg { display: block; touch-action: none; cursor: grab; }
+    .map-overlay-body svg:active { cursor: grabbing; }
+    .map-overlay-hint { padding: 8px 18px 14px; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--tx3); letter-spacing: 0.04em; }
+    @media (max-width: 620px) {
+      .map-overlay-head { gap: 10px; padding: 12px 14px; flex-wrap: wrap; }
+      .map-overlay-title { width: 100%; }
+    }
     .cont-list { border-top: 1px solid var(--line); }
     .cont-row {
       display: flex; align-items: center; gap: 11px;
@@ -509,6 +553,19 @@
     <span class="meta-spacer"></span>
     <span class="meta-timer">Próximo refresh en <strong id="timerCountdown">3:00</strong></span>
   </div>
+
+  <!-- ══════════════ TAB NAV ══════════════ -->
+  <nav class="tab-nav" role="tablist" aria-label="Secciones del dashboard">
+    <button class="tab-btn active" role="tab" aria-selected="true"
+      aria-controls="tab-nacional" id="btn-nacional"
+      onclick="switchTab('nacional')">Resultados nacionales</button>
+    <button class="tab-btn" role="tab" aria-selected="false"
+      aria-controls="tab-exterior" id="btn-exterior"
+      onclick="switchTab('exterior')">Voto en el extranjero</button>
+  </nav>
+
+  <!-- ══════════════ TAB: RESULTADOS NACIONALES ══════════════ -->
+  <div class="tab-pane tab-pane--nacional active" id="tab-nacional" role="tabpanel" aria-labelledby="btn-nacional">
 
   <!-- ══════════════ HERO — DUELO ══════════════ -->
   <section class="hero-result">
@@ -644,6 +701,11 @@
 
   </div>
 
+  </div><!-- /tab-pane--nacional -->
+
+  <!-- ══════════════ TAB: VOTO EN EL EXTRANJERO ══════════════ -->
+  <div class="tab-pane tab-pane--exterior" id="tab-exterior" role="tabpanel" aria-labelledby="btn-exterior">
+
   <!-- ══════════════ VOTO EN EL EXTERIOR ══════════════ -->
   <section class="exterior-section" id="exteriorSection">
     <div class="kicker">
@@ -655,8 +717,8 @@
     <div class="exterior-grid">
       <div class="panel">
         <div class="world-toolbar">
-          <button class="wm-toggle active" data-mode="ganador" onclick="setWorldMode('ganador')">Ganador</button>
-          <button class="wm-toggle" data-mode="margen" onclick="setWorldMode('margen')">Margen</button>
+          <button class="wm-toggle world-toggle active" data-mode="ganador" onclick="setWorldMode('ganador')">Ganador</button>
+          <button class="wm-toggle world-toggle" data-mode="margen" onclick="setWorldMode('margen')">Margen</button>
         </div>
         <div class="world-map-container" id="worldMapContainer">
           <div class="map-loading" id="worldMapLoader">
@@ -680,7 +742,10 @@
     </div>
   </section>
 
-  <!-- ══════════════ REGIONES ══════════════ -->
+  </div><!-- /tab-pane--exterior -->
+
+  <!-- ══════════════ REGIONES (dentro del tab nacional) ══════════════ -->
+  <div class="tab-pane tab-pane--nacional active" id="tab-nacional-bottom" role="presentation">
   <section class="regions-section">
     <div class="kicker">
       <span class="kicker-tick"></span>
@@ -697,6 +762,7 @@
     Datos: <a href="https://resultadosegundavuelta.onpe.gob.pe" target="_blank">ONPE oficial</a> ·
     <a href="https://github.com/MrSprintALot/Peru_Elecciones_2026_2da" target="_blank">Código fuente</a>
   </div>
+  </div><!-- /tab-nacional-bottom -->
 
 </div><!-- /container -->
 
@@ -1298,40 +1364,93 @@ async function loadExterior() {
   }
 }
 
+// Dibuja los países en el target D3 dado. tooltip muestra país + dato continental.
+function buildWorldPaths(W, H, target) {
+  const land = topojson.feature(worldTopo, worldTopo.objects.countries).features
+    .filter(f => f.id !== '010'); // sin Antártida
+  const projection = d3.geoNaturalEarth1().fitSize([W, H], { type: 'FeatureCollection', features: land });
+  const path = d3.geoPath(projection);
+  target.selectAll('path').data(land).enter().append('path')
+    .attr('d', path)
+    .attr('fill', f => continentFill(CONTINENT_BY_ID[+f.id]))
+    .attr('stroke', '#0f1117').attr('stroke-width', 0.4)
+    .append('title').text(f => {
+      // Tooltip: nombre del país (del TopoJSON) + resultado de su continente
+      const countryName = (f.properties && f.properties.name) || '—';
+      const cont = CONTINENT_BY_ID[+f.id];
+      const d = cont ? EXTERIOR[cont] : null;
+      if (!d || (d.fuji === 0 && d.sanch === 0)) return countryName;
+      return `${countryName} · ${CONT_NAME[cont]}: Keiko ${d.fuji.toFixed(1)}% | Sánchez ${d.sanch.toFixed(1)}%`;
+    });
+}
+
 function renderWorldMap() {
   const container = document.getElementById('worldMapContainer');
   if (!container || !worldTopo) return;
   const loader = document.getElementById('worldMapLoader');
   if (loader) loader.style.display = 'none';
 
-  const W = container.offsetWidth || 480;
-  const H = W * 0.625; // 16:10
+  const W = container.offsetWidth || 660;
+  const H = Math.round(W * 0.4375); // 16:7
 
   if (worldSvg) worldSvg.remove();
-  const svg = d3.select('#worldMapContainer').append('svg').attr('width', W).attr('height', H);
-  worldSvg = svg.node();
+  const svgSel = d3.select('#worldMapContainer').append('svg').attr('width', W).attr('height', H);
+  worldSvg = svgSel.node();
+  const g = svgSel.append('g');
+  buildWorldPaths(W, H, g);
 
-  const land = topojson.feature(worldTopo, worldTopo.objects.countries).features
-    .filter(f => f.id !== '010'); // sin Antártida
-  const projection = d3.geoNaturalEarth1().fitSize([W, H], { type: 'FeatureCollection', features: land });
-  const path = d3.geoPath(projection);
+  // Pan + pinch-zoom inline (funciona en iOS, Android, desktop)
+  const zoom = d3.zoom().scaleExtent([1, 8]).on('zoom', ev => g.attr('transform', ev.transform));
+  svgSel.call(zoom).call(zoom.transform, d3.zoomIdentity);
+  svgSel.style('cursor', 'grab');
+  svgSel.on('mousedown.cursor', () => svgSel.style('cursor', 'grabbing'))
+        .on('mouseup.cursor',   () => svgSel.style('cursor', 'grab'));
+}
 
-  svg.selectAll('path').data(land).enter().append('path')
-    .attr('d', path)
-    .attr('fill', f => continentFill(CONTINENT_BY_ID[+f.id]))
-    .attr('stroke', '#0f1117').attr('stroke-width', 0.4)
-    .append('title').text(f => {
-      const cont = CONTINENT_BY_ID[+f.id];
-      const d = cont ? EXTERIOR[cont] : null;
-      if (!d) return (f.properties && f.properties.name) || '';
-      return `${CONT_NAME[cont]}: Keiko ${d.fuji.toFixed(1)}% | Sánchez ${d.sanch.toFixed(1)}%`;
-    });
+// Repinta el mapa según worldMode.
+function paintWorld() {
+  if (worldSvg) d3.select(worldSvg).selectAll('path').attr('fill', f => continentFill(CONTINENT_BY_ID[+f.id]));
 }
 
 function setWorldMode(mode) {
   worldMode = mode;
-  document.querySelectorAll('.wm-toggle').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  if (worldSvg) d3.select(worldSvg).selectAll('path').attr('fill', f => continentFill(CONTINENT_BY_ID[+f.id]));
+  // Scoped a .world-toggle para no tocar el toggle Ganador/Ausentismo del mapa de Perú.
+  document.querySelectorAll('.world-toggle').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  paintWorld();
+}
+
+/* ── Sistema de pestañas ───────────────────────────────────────
+   Nacional: tab-pane--nacional (dos instancias: hero+actas+mapa+chart / regiones+footer)
+   Exterior: tab-pane--exterior
+   Al activar la pestaña exterior se dispara loadExterior() (primera vez)
+   o se re-renderiza el SVG (el offsetWidth era 0 mientras estaba oculto).
+──────────────────────────────────────────────────────────────── */
+function switchTab(tab) {
+  // Botones nav
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const active = b.id === `btn-${tab}`;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', active);
+  });
+
+  // Paneles
+  document.querySelectorAll('.tab-pane--nacional').forEach(p => p.classList.toggle('active', tab === 'nacional'));
+  document.getElementById('tab-exterior').classList.toggle('active', tab === 'exterior');
+
+  if (tab === 'exterior') {
+    if (!exteriorLoaded) {
+      exteriorLoaded = true;
+      loadExterior();
+    } else {
+      // El contenedor estaba oculto: re-renderizar al tamaño real
+      requestAnimationFrame(() => {
+        const container = document.getElementById('worldMapContainer');
+        if (container && container.offsetWidth > 0) renderWorldMap();
+      });
+    }
+  }
+
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function renderContList() {
@@ -1369,24 +1488,9 @@ function renderExtTotal() {
 ══════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Cargar mapa
   initMap();
-
-  // Primer fetch
   refreshFromONPE();
-
-  // Lazy-load del mapa del exterior cuando la sección entra en viewport
-  const extSection = document.getElementById('exteriorSection');
-  if (extSection && 'IntersectionObserver' in window) {
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting && !exteriorLoaded) { exteriorLoaded = true; loadExterior(); }
-      });
-    }, { rootMargin: '200px' });
-    obs.observe(extSection);
-  } else {
-    setTimeout(() => { if (!exteriorLoaded) { exteriorLoaded = true; loadExterior(); } }, 1500);
-  }
+  // El exterior carga al hacer clic en la pestaña (switchTab lo dispara).
 });
 </script>
 </body>
