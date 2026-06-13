@@ -778,6 +778,10 @@
         <span class="kicker-rule"></span>
         <span class="kicker-note">+ proyección</span>
       </div>
+      <div class="world-toolbar">
+        <button class="wm-toggle chart-toggle active" data-mode="carrera" onclick="setChartMode('carrera')">Carrera</button>
+        <button class="wm-toggle chart-toggle" data-mode="margen" onclick="setChartMode('margen')">Margen</button>
+      </div>
       <div class="chart-container">
         <canvas id="trackingChart"></canvas>
       </div>
@@ -1328,12 +1332,99 @@ function updateMapColors() {
 ══════════════════════════════════════════════════════════════ */
 
 let trackingChart = null;
+let chartMode = 'carrera';   // 'carrera' | 'margen'
+
+function setChartMode(mode) {
+  chartMode = mode;
+  // Scoped SOLO a .chart-toggle — no tocar los toggles del mapa de Perú
+  // (.peru-toggle) ni del planisferio (.world-toggle).
+  document.querySelectorAll('.chart-toggle').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  if (TRACKING.length >= 2) renderTrackingChart();
+}
+
+/* Modo Margen: una sola serie keiko − sanch (pp), cero como línea de
+   referencia, área teñida por quien domina y puntos grandes en cada
+   cambio de líder. Eje Y autoescalado al rango real del margen (no
+   comparte escala con el modo Carrera: con ~0.02pp sería invisible). */
+function renderMarginChart(ctx) {
+  const cuts = TRACKING;
+  const margins = cuts.map(c => c.keiko - c.sanch);
+  const flips = margins.map((m, i) => i > 0 && Math.sign(m) !== Math.sign(margins[i - 1]));
+  const maxAbs = Math.max(...margins.map(Math.abs), 0.05);
+  const lim = +(maxAbs * 1.3).toPrecision(2);
+
+  trackingChart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [{
+      label: 'Margen Fujimori − Sánchez',
+      data: cuts.map((c, i) => ({ x: c.pct, y: margins[i] })),
+      borderWidth: 2.5, tension: 0.3,
+      segment: { borderColor: s => (s.p1.parsed.y >= 0 ? C_KEIKO : C_SANCH) },
+      borderColor: C_KEIKO,
+      pointRadius: margins.map((m, i) => flips[i] ? 6 : 3),
+      pointHoverRadius: margins.map((m, i) => flips[i] ? 8 : 5),
+      pointBackgroundColor: margins.map(m => m >= 0 ? C_KEIKO : C_SANCH),
+      pointBorderColor: margins.map((m, i) => flips[i] ? '#edeff2' : 'transparent'),
+      pointBorderWidth: margins.map((m, i) => flips[i] ? 1.5 : 0),
+      fill: {
+        target: { value: 0 },
+        above: 'rgba(232,148,58,0.13)',   // --c-keiko-bg
+        below: 'rgba(46,205,167,0.13)',   // --c-sanch-bg
+      },
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, showLine: true,
+      animation: { duration: 600 },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e2230', titleColor: '#e8eaed', bodyColor: '#9aa0ab',
+          borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, padding: 10,
+          callbacks: {
+            title: items => items.length ? items[0].parsed.x.toFixed(2) + '% actas' : '',
+            label: item => {
+              const i = item.dataIndex;
+              const m = margins[i];
+              const lead = m >= 0 ? 'Fujimori' : 'Sánchez';
+              let s = ` ${lead} +${Math.abs(m).toFixed(3)}pp`;
+              // Cortes nuevos del Worker traen votos absolutos (kv/sv);
+              // los viejos no — tolerarlos.
+              const c = cuts[i];
+              if (c.kv != null && c.sv != null && (c.kv || c.sv)) {
+                s += ` · ${fmt(Math.abs(c.kv - c.sv))} votos`;
+              }
+              if (flips[i]) s += ' · ⚡ cambio de líder';
+              return s;
+            },
+          }
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear', min: 0, max: 100,
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, stepSize: 10, callback: v => v + '%' },
+          title: { display: true, text: '% actas', color: '#5f6673', font: { size: 10 } },
+        },
+        y: {
+          min: -lim, max: lim,
+          grid: { color: c => c.tick.value === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,.04)' },
+          ticks: { color: '#5f6673', font: { family: '"DM Mono"', size: 10 }, callback: v => (v > 0 ? '+' : '') + v + 'pp' },
+          title: { display: true, text: 'margen (pp)', color: '#5f6673', font: { size: 10 } },
+        },
+      }
+    }
+  });
+}
 
 function renderTrackingChart() {
   const ctx = document.getElementById('trackingChart');
   if (!ctx || TRACKING.length < 2) return;
 
   if (trackingChart) { trackingChart.destroy(); trackingChart = null; }
+
+  if (chartMode === 'margen') { renderMarginChart(ctx); return; }
 
   const cuts = TRACKING;
   const last = cuts[cuts.length - 1];
@@ -1465,7 +1556,8 @@ async function refreshFromONPE() {
       if (respT.ok) {
         const t = await respT.json();
         if (t.cuts && t.cuts.length > 0) {
-          TRACKING = t.cuts.map(c => ({ pct: c.pct, keiko: c.keiko, sanch: c.sanch }));
+          // kv/sv (votos absolutos) solo existen en cortes nuevos del Worker
+          TRACKING = t.cuts.map(c => ({ pct: c.pct, keiko: c.keiko, sanch: c.sanch, kv: c.kv, sv: c.sv }));
         }
       }
     } catch (e) { /* si falla, seguimos con el tracking local */ }
@@ -1476,7 +1568,10 @@ async function refreshFromONPE() {
     } else if (NATIONAL) {
       // Asegurar que el último punto refleje el dato más reciente
       const last = TRACKING[TRACKING.length - 1];
-      const cut = { pct: NATIONAL.pct, keiko: NATIONAL.candidates.fuji, sanch: NATIONAL.candidates.sanch };
+      const cut = {
+        pct: NATIONAL.pct, keiko: NATIONAL.candidates.fuji, sanch: NATIONAL.candidates.sanch,
+        kv: NATIONAL.candidates.fujiVotos, sv: NATIONAL.candidates.sanchVotos,
+      };
       if (!last || NATIONAL.pct > last.pct + 0.3) TRACKING.push(cut);
       else if (NATIONAL.pct >= last.pct) Object.assign(last, cut);
     }
