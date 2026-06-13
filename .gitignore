@@ -1,0 +1,5 @@
+# Config local de la sesión de Claude Code (no parte del producto)
+.claude/
+
+# Plan de trabajo del estimador de desenlace (documento de proceso, no producto)
+spec_estimador_desenlace.md
